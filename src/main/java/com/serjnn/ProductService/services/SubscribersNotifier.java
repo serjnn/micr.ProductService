@@ -1,6 +1,5 @@
 package com.serjnn.ProductService.services;
 
-
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
 import com.serjnn.ProductService.kafka.kafkaProducer.KafkaSender;
@@ -8,6 +7,8 @@ import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -18,17 +19,15 @@ public class SubscribersNotifier {
 
     public void notifySubscribers(DiscountChangesDto discountChangesDto) {
         log.info("notifying subscribers " + discountChangesDto);
-        Long productId = discountChangesDto.getProductId();
-        subscribersRepository.findClientIdsByProductId(productId)
-                .map(clientId ->
-                        new DiscountNotification(discountChangesDto.getProductId(),
-                                clientId,
-                                discountChangesDto.getNewDiscount()))
-                .doOnNext(dto -> kafkaSender.sendDiscountNotification("discountNotifTopic", dto))
-                .subscribe(); //We need either Mono<Void> either subscribe reactive chain
-
-        //.map transforms the items in the stream, while .doOnNext performs side effects without changing items.
+        Long productId = discountChangesDto.productId();
+        List<Long> clientIds = subscribersRepository.findClientIdsByProductId(productId);
+        clientIds.forEach(clientId -> {
+            DiscountNotification notification = new DiscountNotification(
+                    discountChangesDto.productId(),
+                    clientId,
+                    discountChangesDto.newDiscount()
+            );
+            kafkaSender.sendDiscountNotification("discountNotifTopic", notification);
+        }); // todo batch send
     }
-
-
 }

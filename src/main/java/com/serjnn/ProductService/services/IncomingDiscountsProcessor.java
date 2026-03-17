@@ -1,6 +1,5 @@
 package com.serjnn.ProductService.services;
 
-
 import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
 import com.serjnn.ProductService.mappers.DiscountMapper;
@@ -13,18 +12,18 @@ import org.springframework.stereotype.Service;
 public class IncomingDiscountsProcessor {
     private final DiscountCacheManager discountCacheManager;
     private final SubscribersNotifier subscribersNotifier;
+
     public void process(DiscountChangesDto discountChangesDto) {
         CacheableDiscountDto cacheableDiscountDto = DiscountMapper.INSTANCE.toCacheableDto(discountChangesDto);
         discountCacheManager.addToCache(cacheableDiscountDto);
 
-        if (discountChangesDto.getPrevDiscount() == null) {
+        if (discountChangesDto.prevDiscount() == null) {
             return;
         }
 
-        if (Double.compare(discountChangesDto.getPrevDiscount(),
-                discountChangesDto.getNewDiscount()) < 0) {
+        if (Double.compare(discountChangesDto.prevDiscount(),
+                discountChangesDto.newDiscount()) < 0) {
             subscribersNotifier.notifySubscribers(discountChangesDto);
         }
-
     }
 }

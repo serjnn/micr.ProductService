@@ -1,51 +1,43 @@
 package com.serjnn.ProductService.redis;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.ReactiveRedisOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
 
+import java.util.Optional;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DiscountCacheManager {
-    private final ReactiveRedisOperations<String, Object> redisOperations;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final String DISCOUNTS_HASH_KEY = "discounts_hash";
 
-
     public void addToCache(CacheableDiscountDto cacheableDiscountDto) {
         log.info("adding to cache " + cacheableDiscountDto);
-
-        redisOperations
-                .opsForHash()
-                .put(DISCOUNTS_HASH_KEY, String.valueOf(cacheableDiscountDto.getProductId())
-                        ,mapToJsonString(cacheableDiscountDto))
-                .subscribe();
+        redisTemplate.opsForHash().put(DISCOUNTS_HASH_KEY, String.valueOf(cacheableDiscountDto.productId())
+                , mapToJsonString(cacheableDiscountDto));
     }
+
     @SneakyThrows
     private CacheableDiscountDto readFromJsonString(Object value) {
-        return new ObjectMapper().readValue(value.toString(), CacheableDiscountDto.class);
+        if (value == null) return null;
+        return objectMapper.readValue(value.toString(), CacheableDiscountDto.class);
     }
 
     @SneakyThrows
     private String mapToJsonString(CacheableDiscountDto discountEntity) {
-        return new ObjectMapper().writeValueAsString(discountEntity);
+        return objectMapper.writeValueAsString(discountEntity);
     }
 
-
-    public Mono<CacheableDiscountDto> getDiscountByProductId(Long productId) {
-        return redisOperations
-                .opsForHash()
-                .get(DISCOUNTS_HASH_KEY, productId.toString())
-                .map(this::readFromJsonString);
-
-
+    public Optional<CacheableDiscountDto> getDiscountByProductId(Long productId) {
+        Object value = redisTemplate.opsForHash().get(DISCOUNTS_HASH_KEY, productId.toString());
+        return Optional.ofNullable(readFromJsonString(value));
     }
 }
