@@ -38,10 +38,14 @@ public class ProductService {
         return countDiscount(products);
     }
 
-    public List<Product> findProductsByIds(IdsRequest idsRequest) {
-        List<Long> ids = idsRequest.ids();
+
+    public List<Product> findAllByIds(List<Long> ids) {
         List<Product> products = productRepository.findAllById(ids);
         return countDiscount(products);
+    }
+
+    public Optional<Product> findById(Long id) {
+        return productRepository.findById(id);
     }
 
     private List<Product> countDiscount(List<Product> products) {
