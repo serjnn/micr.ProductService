@@ -5,9 +5,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    url: ${SPRING_FLYWAY_URL}
-    user: ${SPRING_FLYWAY_USER}
-    password: ${SPRING_FLYWAY_PASSWORD}
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
   datasource:
     driver-class-name: org.postgresql.Driver
     url: ${spring.datasource.url}
