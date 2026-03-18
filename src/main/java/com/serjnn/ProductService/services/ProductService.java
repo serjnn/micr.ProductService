@@ -10,6 +10,7 @@ import com.serjnn.ProductService.repo.ProductRepository;
 import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -27,6 +28,9 @@ public class ProductService {
     private final RestTemplate restTemplate;
     private final SubscribersRepository subscribersRepository;
     private final DiscountCacheManager discountCacheManager;
+
+    @Value("${app.services.discount-url}")
+    private String discountUrl;
 
     public List<Product> findProductsByCategory(Category category) {
         List<Product> products = productRepository.findProductsByCategory(category);
@@ -83,7 +87,7 @@ public class ProductService {
 
     private Optional<CacheableDiscountDto> askDiscountService(Long productId) {
         try {
-            CacheableDiscountDto response = restTemplate.getForObject("http://discount/api/v1/byProductId/" + productId, CacheableDiscountDto.class);
+            CacheableDiscountDto response = restTemplate.getForObject(discountUrl + productId, CacheableDiscountDto.class);
             return Optional.ofNullable(response);
         } catch (Exception e) {
             log.warn("Error while fetching discount for product " + productId + ": " + e.getMessage());

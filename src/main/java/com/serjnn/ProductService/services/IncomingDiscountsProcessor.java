@@ -14,15 +14,14 @@ public class IncomingDiscountsProcessor {
     private final SubscribersNotifier subscribersNotifier;
 
     public void process(DiscountChangesDto discountChangesDto) {
-        CacheableDiscountDto cacheableDiscountDto = DiscountMapper.INSTANCE.toCacheableDto(discountChangesDto);
+        CacheableDiscountDto cacheableDiscountDto =
+                DiscountMapper.INSTANCE.toCacheableDto(discountChangesDto);
         discountCacheManager.addToCache(cacheableDiscountDto);
+        double newDiscount = discountChangesDto.newDiscount();
+        double prevDiscount = discountChangesDto.prevDiscount();
 
-        if (discountChangesDto.prevDiscount() == null) {
-            return;
-        }
 
-        if (Double.compare(discountChangesDto.prevDiscount(),
-                discountChangesDto.newDiscount()) < 0) {
+        if (Double.compare(prevDiscount, newDiscount) < 0) {
             subscribersNotifier.notifySubscribers(discountChangesDto);
         }
     }

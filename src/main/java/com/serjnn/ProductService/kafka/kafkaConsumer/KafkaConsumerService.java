@@ -13,7 +13,7 @@ public class KafkaConsumerService {
 
     private final IncomingDiscountsProcessor incomingDiscountsProcessor;
 
-    @KafkaListener(topics = "discountChangesTopic", groupId = "first_product_group")
+    @KafkaListener(topics = "${app.kafka.topic.discount-changes}", groupId = "${spring.kafka.consumer.group-id}")
     public void discountListener(DiscountChangesDto discountChangesDto) {
         incomingDiscountsProcessor.process(discountChangesDto);
 

@@ -40,4 +40,8 @@ public class DiscountCacheManager {
         Object value = redisTemplate.opsForHash().get(DISCOUNTS_HASH_KEY, productId.toString());
         return Optional.ofNullable(readFromJsonString(value));
     }
+
+    public void clearCache() {
+        redisTemplate.delete(DISCOUNTS_HASH_KEY);
+    }
 }

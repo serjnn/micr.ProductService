@@ -6,6 +6,7 @@ import com.serjnn.ProductService.kafka.kafkaProducer.KafkaSender;
 import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +18,9 @@ public class SubscribersNotifier {
     private final SubscribersRepository subscribersRepository;
     private final KafkaSender kafkaSender;
 
+    @Value("${app.kafka.topic.discount-notifications}")
+    private String discountNotifTopic;
+
     public void notifySubscribers(DiscountChangesDto discountChangesDto) {
         log.info("notifying subscribers " + discountChangesDto);
         Long productId = discountChangesDto.productId();
@@ -27,7 +31,7 @@ public class SubscribersNotifier {
                     clientId,
                     discountChangesDto.newDiscount()
             );
-            kafkaSender.sendDiscountNotification("discountNotifTopic", notification);
+            kafkaSender.sendDiscountNotification(discountNotifTopic, notification);
         }); // todo batch send
     }
 }

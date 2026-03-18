@@ -1,44 +1,59 @@
-
 spring:
+  application:
+    name: ${APP_NAME:product}
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:first_product_group}
+      auto-offset-reset: ${KAFKA_CONSUMER_AUTO_OFFSET_RESET:earliest}
+      enable-auto-commit: ${KAFKA_CONSUMER_ENABLE_AUTO_COMMIT:true}
+      auto-commit-interval: ${KAFKA_CONSUMER_AUTO_COMMIT_INTERVAL:100}
+      value-default-type: ${KAFKA_CONSUMER_VALUE_DEFAULT_TYPE:com.serjnn.ProductService.dtos.DiscountChangesDto}
+      trusted-packages: ${KAFKA_CONSUMER_TRUSTED_PACKAGES:*}
+    producer:
+      acks: ${KAFKA_PRODUCER_ACKS:all}
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    url: ${SPRING_FLYWAY_URL}
-    user: ${SPRING_FLYWAY_USER}
-    password: ${SPRING_FLYWAY_PASSWORD}
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${FLYWAY_BASELINE:true}
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: ${spring.datasource.url}
-    username: ${spring.datasource.username}
-    password: ${spring.datasource.password}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/product_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
   redis:
-    host: ${REDIS_HOST}
-    port: ${REDIS_PORT}
-  application:
-    name: product
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+
+app:
+  services:
+    discount-url: ${DISCOUNT_SERVICE_URL:http://discount/api/v1/byProductId/}
+  kafka:
+    topic:
+      discount-notifications: ${KAFKA_TOPIC_DISCOUNT_NOTIFICATIONS:discountNotifTopic}
+      discount-notifications-partitions: ${KAFKA_TOPIC_DISCOUNT_NOTIFICATIONS_PARTITIONS:3}
+      discount-changes: ${KAFKA_TOPIC_DISCOUNT_CHANGES:discountChangesTopic}
 
 springdoc:
   api-docs:
-    path: /api-docs
+    path: ${SPRINGDOC_API_DOCS_PATH:/api-docs}
   swagger-ui:
-    path: /swagger-ui.html
+    path: ${SPRINGDOC_SWAGGER_UI_PATH:/swagger-ui.html}
     operations-sorter: alpha
     tags-sorter: alpha
 
 server:
-  port: 7002
+  port: ${SERVER_PORT:7002}
 
 logging:
   level:
-    root: INFO
+    root: ${LOGGING_LEVEL_ROOT:INFO}
 
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL}
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
   instance:
-    prefer-ip-address: true
-
-
+    prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP:true}

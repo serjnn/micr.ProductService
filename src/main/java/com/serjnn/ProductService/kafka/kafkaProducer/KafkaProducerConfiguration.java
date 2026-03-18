@@ -20,10 +20,19 @@ import java.util.Map;
 @Configuration
 public class KafkaProducerConfiguration {
 
+    @Value("${app.kafka.topic.discount-notifications}")
+    private String discountNotifTopicName;
+
+    @Value("${app.kafka.topic.discount-notifications-partitions}")
+    private int discountNotifTopicPartitions;
+
+    @Value("${spring.kafka.producer.acks}")
+    private String producerAcks;
+
     @Bean
     public NewTopic discountNotifTopic() {
-        return TopicBuilder.name("discountNotifTopic").
-                partitions(3).
+        return TopicBuilder.name(discountNotifTopicName).
+                partitions(discountNotifTopicPartitions).
                 build();
     }
 
@@ -37,7 +46,7 @@ public class KafkaProducerConfiguration {
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        configProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        configProps.put(ProducerConfig.ACKS_CONFIG, producerAcks);
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 
