@@ -49,7 +49,7 @@ springdoc:
     tags-sorter: alpha
 
 server:
-  port: ${SERVER_PORT:7002}
+  port: ${SERVER_PORT:7022}
 
 logging:
   pattern:
