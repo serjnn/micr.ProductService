@@ -12,6 +12,10 @@ spring:
       trusted-packages: ${KAFKA_CONSUMER_TRUSTED_PACKAGES:*}
     producer:
       acks: ${KAFKA_PRODUCER_ACKS:all}
+    listener:
+      observation-enabled: true
+    template:
+      observation-enabled: true
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
     baseline-on-migrate: ${FLYWAY_BASELINE:true}
@@ -48,8 +52,18 @@ server:
   port: ${SERVER_PORT:7002}
 
 logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
   level:
     root: ${LOGGING_LEVEL_ROOT:INFO}
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
 
 eureka:
   client:

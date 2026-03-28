@@ -55,7 +55,7 @@ public class ProductService {
     private List<Product> countDiscount(List<Product> products) {
         return products.stream().map(product -> {
             Optional<CacheableDiscountDto> discountOpt = getDiscountByAnyCost(product.id());
-            if (discountOpt.isPresent()) {
+            if (discountOpt.isPresent() && discountOpt.get().discount() > 0) {
                 BigDecimal discount = BigDecimal.valueOf(discountOpt.get().discount());
 
                 BigDecimal newPrice = product.price()
@@ -63,23 +63,31 @@ public class ProductService {
                                 BigDecimal.ONE.subtract(
                                         discount.divide(BigDecimal.valueOf(100))))
                         .setScale(2, RoundingMode.HALF_UP);
-                return new Product(product.id(), product.name(), product.description(), newPrice, product.category());
+                log.debug("Applied discount {}% to product {}. New price: {}", discount,
+                        product.id(), newPrice);
+                return new Product(product.id(), product.name(), product.description(), newPrice,
+                        product.category());
             }
             return product;
         }).collect(Collectors.toList());
     }
 
     public Optional<CacheableDiscountDto> getDiscountByAnyCost(Long id) {
+        log.debug("Fetching discount for product {} from cache", id);
         Optional<CacheableDiscountDto> cached = discountCacheManager.getDiscountByProductId(id);
         if (cached.isPresent()) {
+            log.debug("Cache hit for product {} discount", id);
             return cached;
         }
 
+        log.info("Cache miss for product {} discount. Fetching from external service.", id);
         Optional<CacheableDiscountDto> fetched = askDiscountService(id);
         if (fetched.isPresent()) {
+            log.info("Fetched discount for product {}: {}", id, fetched.get().discount());
             discountCacheManager.addToCache(fetched.get());
             return fetched;
         } else {
+            log.info("No discount information found for product {}. Caching default (0%).", id);
             discountCacheManager.addToCache(new CacheableDiscountDto(id, 0.0));
             return Optional.empty();
         }
@@ -87,10 +95,12 @@ public class ProductService {
 
     private Optional<CacheableDiscountDto> askDiscountService(Long productId) {
         try {
-            CacheableDiscountDto response = restTemplate.getForObject(discountUrl + productId, CacheableDiscountDto.class);
+            CacheableDiscountDto response =
+                    restTemplate.getForObject(discountUrl + productId, CacheableDiscountDto.class);
             return Optional.ofNullable(response);
         } catch (Exception e) {
-            log.warn("Error while fetching discount for product " + productId + ": " + e.getMessage());
+            log.error("Error while fetching discount for product {}: {}", productId,
+                    e.getMessage());
             return Optional.empty();
         }
     }
@@ -100,6 +110,7 @@ public class ProductService {
     }
 
     public void subscribe(Long clientId, Long productId) {
+        log.info("Subscribing client {} to product {}", clientId, productId);
         subscribersRepository.save(new Subscriber(null, productId, clientId));
     }
 }
