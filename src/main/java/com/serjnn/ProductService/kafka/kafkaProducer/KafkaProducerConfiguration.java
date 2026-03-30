@@ -1,11 +1,13 @@
 package com.serjnn.ProductService.kafka.kafkaProducer;
 
 
+import com.serjnn.ProductService.config.AppKafkaProperties;
+import com.serjnn.ProductService.config.KafkaConfigProperties;
 import com.serjnn.ProductService.dtos.DiscountNotification;
+import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
@@ -18,35 +20,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
+@RequiredArgsConstructor
 public class KafkaProducerConfiguration {
 
-    @Value("${app.kafka.topic.discount-notifications}")
-    private String discountNotifTopicName;
-
-    @Value("${app.kafka.topic.discount-notifications-partitions}")
-    private int discountNotifTopicPartitions;
-
-    @Value("${spring.kafka.producer.acks}")
-    private String producerAcks;
+    private final KafkaConfigProperties kafkaConfigProperties;
+    private final AppKafkaProperties appKafkaProperties;
 
     @Bean
     public NewTopic discountNotifTopic() {
-        return TopicBuilder.name(discountNotifTopicName).
-                partitions(discountNotifTopicPartitions).
+        return TopicBuilder.name(appKafkaProperties.getTopic().getDiscountNotifications()).
+                partitions(appKafkaProperties.getTopic().getDiscountNotificationsPartitions()).
                 build();
     }
-
-
-    @Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
 
     @Bean
     public ProducerFactory<String, DiscountNotification> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.getBootstrapServers());
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        configProps.put(ProducerConfig.ACKS_CONFIG, producerAcks);
+        configProps.put(ProducerConfig.ACKS_CONFIG, kafkaConfigProperties.getProducer().getAcks());
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 
