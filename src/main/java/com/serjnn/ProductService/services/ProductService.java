@@ -1,7 +1,6 @@
 package com.serjnn.ProductService.services;
 
 import com.serjnn.ProductService.dtos.CacheableDiscountDto;
-import com.serjnn.ProductService.dtos.IdsRequest;
 import com.serjnn.ProductService.enums.Category;
 import com.serjnn.ProductService.models.Product;
 import com.serjnn.ProductService.models.Subscriber;
@@ -11,6 +10,9 @@ import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -32,20 +34,23 @@ public class ProductService {
     @Value("${app.services.discount-url}")
     private String discountUrl;
 
-    public List<Product> findProductsByCategory(Category category) {
-        List<Product> products = productRepository.findProductsByCategory(category);
-        return countDiscount(products);
+    public Slice<Product> findProductsByCategory(Category category, Pageable pageable) {
+        Slice<Product> productsSlice = productRepository.findProductsByCategory(category, pageable);
+        List<Product> discountedProducts = countDiscount(productsSlice.getContent());
+        return new SliceImpl<>(discountedProducts, pageable, productsSlice.hasNext());
     }
 
-    public List<Product> findAll() {
-        List<Product> products = productRepository.findAll();
-        return countDiscount(products);
+    public Slice<Product> findAll(Pageable pageable) {
+        Slice<Product> productsSlice = productRepository.findAll(pageable);
+        List<Product> discountedProducts = countDiscount(productsSlice.getContent());
+        return new SliceImpl<>(discountedProducts, pageable, productsSlice.hasNext());
     }
 
 
-    public List<Product> findAllByIds(List<Long> ids) {
-        List<Product> products = productRepository.findAllById(ids);
-        return countDiscount(products);
+    public Slice<Product> findAllByIds(List<Long> ids, Pageable pageable) {
+        Slice<Product> productsSlice = productRepository.findAllById(ids, pageable);
+        List<Product> discountedProducts = countDiscount(productsSlice.getContent());
+        return new SliceImpl<>(discountedProducts, pageable, productsSlice.hasNext());
     }
 
     public Optional<Product> findById(Long id) {

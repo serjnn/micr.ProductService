@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,9 +27,9 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Get all products")
-    public List<Product> all() {
+    public Slice<Product> all(Pageable pageable) {
         log.info("Received request to get all products");
-        return productService.findAll();
+        return productService.findAll(pageable);
     }
 
     @GetMapping("/{id}")
@@ -36,7 +39,7 @@ public class ProductController {
         return productService.getDiscountByAnyCost(id)
                 .map(discount -> {
                     log.info("Found discount for product {}. Re-fetching with updated price.", id);
-                    return productService.findAllByIds(List.of(id)).get(0);
+                    return productService.findAllByIds(List.of(id), PageRequest.of(0, 1)).getContent().get(0);
                 }) // Helper to re-fetch with discount
                 .orElseGet(() -> {
                     log.info("No discount found for product {}. Fetching original product.", id);
@@ -46,16 +49,16 @@ public class ProductController {
 
     @PostMapping("/by-ids")
     @Operation(summary = "Get products by multiple IDs")
-    public List<Product> getProductsByIds(@RequestBody IdsRequest idsRequest) {
+    public Slice<Product> getProductsByIds(@RequestBody IdsRequest idsRequest, Pageable pageable) {
         log.info("Received request to get products by multiple IDs: {}", idsRequest.ids());
-        return productService.findAllByIds(idsRequest.ids());
+        return productService.findAllByIds(idsRequest.ids(), pageable);
     }
 
     @GetMapping("/category/{cat}")
     @Operation(summary = "Get products by category")
-    public List<Product> bucket(@PathVariable("cat") Category category) {
+    public Slice<Product> bucket(@PathVariable("cat") Category category, Pageable pageable) {
         log.info("Received request to get products by category: {}", category);
-        return productService.findProductsByCategory(category);
+        return productService.findProductsByCategory(category, pageable);
     }
 
     @PostMapping

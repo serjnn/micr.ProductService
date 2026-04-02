@@ -7,9 +7,10 @@ import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,14 +25,22 @@ public class SubscribersNotifier {
     public void notifySubscribers(DiscountChangesDto discountChangesDto) {
         log.info("notifying subscribers " + discountChangesDto);
         Long productId = discountChangesDto.productId();
-        List<Long> clientIds = subscribersRepository.findClientIdsByProductId(productId);
-        clientIds.forEach(clientId -> {
-            DiscountNotification notification = new DiscountNotification(
-                    discountChangesDto.productId(),
-                    clientId,
-                    discountChangesDto.newDiscount()
-            );
-            kafkaSender.sendDiscountNotification(discountNotifTopic, notification);
-        }); // todo batch send
+        
+        int pageSize = 100;
+        Pageable pageable = PageRequest.of(0, pageSize);
+        Slice<Long> clientIdsSlice;
+        
+        do {
+            clientIdsSlice = subscribersRepository.findClientIdsByProductId(productId, pageable);
+            clientIdsSlice.getContent().forEach(clientId -> {
+                DiscountNotification notification = new DiscountNotification(
+                        discountChangesDto.productId(),
+                        clientId,
+                        discountChangesDto.newDiscount()
+                );
+                kafkaSender.sendDiscountNotification(discountNotifTopic, notification);
+            });
+            pageable = pageable.next();
+        } while (clientIdsSlice.hasNext());
     }
 }

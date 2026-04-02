@@ -18,6 +18,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -124,8 +126,8 @@ public class ProductServiceIntegrationTest {
         // 3. Retrieve all products and verify price is discounted
         mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(1))))
-                .andExpect(jsonPath("$[?(@.name == 'iPhone 15')].price").value(900.0));
+                .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))))
+                .andExpect(jsonPath("$.content[?(@.name == 'iPhone 15')].price").value(900.0));
     }
 
     @Test
@@ -133,24 +135,24 @@ public class ProductServiceIntegrationTest {
         // 1. Create product first
         productRepository.save(new Product(null, "Laptop", "Workstation", new BigDecimal("2000.00"),
                 Category.ELECTRONICS));
-        List<Product> products = productRepository.findAll();
-        Long productId = products.get(0).id();
+        Slice<Product> products = productRepository.findAll(PageRequest.of(0, 10));
+        Long productId = products.getContent().get(0).id();
 
         // 2. Subscribe
         mockMvc.perform(post("/api/v1/products/" + productId + "/subscribe/123"))
                 .andExpect(status().isCreated());
 
         // 3. Verify in DB
-        List<Long> subscriberIds = subscribersRepository.findClientIdsByProductId(productId);
-        assertTrue(subscriberIds.contains(123L));
+        Slice<Long> subscriberIds = subscribersRepository.findClientIdsByProductId(productId, PageRequest.of(0, 10));
+        assertTrue(subscriberIds.getContent().contains(123L));
     }
 
     @Test
     void shouldGetProductsByIds() throws Exception {
         productRepository.save(new Product(null, "Book", "Novel", new BigDecimal("20.00"),
                 Category.TOYS));
-        List<Product> products = productRepository.findAll();
-        Long productId = products.get(products.size() - 1).id();
+        Slice<Product> products = productRepository.findAll(PageRequest.of(0, 100));
+        Long productId = products.getContent().get(products.getContent().size() - 1).id();
 
         IdsRequest request = new IdsRequest(List.of(productId));
 
@@ -158,16 +160,16 @@ public class ProductServiceIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("Book"));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].name").value("Book"));
     }
 
     @Test
     void shouldProcessDiscountChangeAndNotifySubscribers() throws Exception {
         // 1. Create product and subscriber
         productRepository.save(new Product(null, "Kafka Product", "Kafka Desc", new BigDecimal("100.00"), Category.ELECTRONICS));
-        List<Product> products = productRepository.findAll();
-        Long productId = products.get(0).id();
+        Slice<Product> products = productRepository.findAll(PageRequest.of(0, 10));
+        Long productId = products.getContent().get(0).id();
 
         mockMvc.perform(post("/api/v1/products/" + productId + "/subscribe/999"))
                 .andExpect(status().isCreated());
