@@ -27,13 +27,14 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/product_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
-  redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 app:
   services:
-    discount-url: ${DISCOUNT_SERVICE_URL:http://discount/api/v1/byProductId/}
+    discount-url: ${DISCOUNT_SERVICE_URL:http://discount/api/v1/discounts/}
   kafka:
     topic:
       discount-notifications: ${KAFKA_TOPIC_DISCOUNT_NOTIFICATIONS:discountNotifTopic}

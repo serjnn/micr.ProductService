@@ -92,7 +92,7 @@ public class ProductService {
             discountCacheManager.addToCache(fetched.get());
             return fetched;
         } else {
-            log.info("No discount information found for product {}. Caching default (0%).", id);
+            log.info("No discount information found for product {}. Caching default ( 0.0 ).", id);
             discountCacheManager.addToCache(new CacheableDiscountDto(id, 0.0));
             return Optional.empty();
         }
