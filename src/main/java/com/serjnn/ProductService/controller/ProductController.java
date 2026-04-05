@@ -64,9 +64,9 @@ public class ProductController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Add a new product")
-    public void addProduct(@RequestBody Product product) {
+    public Long addProduct(@RequestBody Product product) {
         log.info("Received request to add a new product: {}", product.name());
-        productService.add(product);
+        return productService.add(product);
     }
 
     @PostMapping("/{productId}/subscribe/{clientId}")

@@ -110,8 +110,8 @@ public class ProductService {
         }
     }
 
-    public void add(Product product) {
-        productRepository.save(product);
+    public Long add(Product product) {
+        return productRepository.save(product);
     }
 
     public void subscribe(Long clientId, Long productId) {

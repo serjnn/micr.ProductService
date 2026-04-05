@@ -10,8 +10,12 @@ import org.springframework.jdbc.core.DataClassRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -75,8 +79,20 @@ public class ProductRepository {
         return results.stream().findFirst();
     }
 
-    public void save(Product product) {
-        jdbcTemplate.update("INSERT INTO product (name, description, price, category) VALUES (?, ?, ?, ?)",
-                product.name(), product.description(), product.price(), product.category().name());
+    public Long save(Product product) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(
+                    "INSERT INTO product (name, description, price, category) VALUES (?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS);
+            ps.setString(1, product.name());
+            ps.setString(2, product.description());
+            ps.setBigDecimal(3, product.price());
+            ps.setString(4, product.category().name());
+            return ps;
+        }, keyHolder);
+
+        Number key = (Number) keyHolder.getKeys().get("id");
+        return key != null ? key.longValue() : null;
     }
 }
