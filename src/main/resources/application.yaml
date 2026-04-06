@@ -1,21 +1,10 @@
 spring:
   application:
     name: ${APP_NAME:product}
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP_ID:first_product_group}
-      auto-offset-reset: ${KAFKA_CONSUMER_AUTO_OFFSET_RESET:earliest}
-      enable-auto-commit: ${KAFKA_CONSUMER_ENABLE_AUTO_COMMIT:true}
-      auto-commit-interval: ${KAFKA_CONSUMER_AUTO_COMMIT_INTERVAL:100}
-      value-default-type: ${KAFKA_CONSUMER_VALUE_DEFAULT_TYPE:com.serjnn.ProductService.dtos.DiscountChangesDto}
-      trusted-packages: ${KAFKA_CONSUMER_TRUSTED_PACKAGES:*}
-    producer:
-      acks: ${KAFKA_PRODUCER_ACKS:all}
-    listener:
-      observation-enabled: true
-    template:
-      observation-enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
     baseline-on-migrate: ${FLYWAY_BASELINE:true}
@@ -27,19 +16,14 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/product_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
 
 app:
   services:
     discount-url: ${DISCOUNT_SERVICE_URL:http://discount/api/v1/discounts/}
-  kafka:
-    topic:
-      discount-notifications: ${KAFKA_TOPIC_DISCOUNT_NOTIFICATIONS:discountNotifTopic}
-      discount-notifications-partitions: ${KAFKA_TOPIC_DISCOUNT_NOTIFICATIONS_PARTITIONS:3}
-      discount-changes: ${KAFKA_TOPIC_DISCOUNT_CHANGES:discountChangesTopic}
+  redis:
+    channel:
+      discount-eviction: ${REDIS_CHANNEL_DISCOUNT_EVICTION:discount-eviction-topic}
+      discount-notifications: ${REDIS_CHANNEL_DISCOUNT_NOTIFICATIONS:discount-notifications-topic}
 
 springdoc:
   api-docs:

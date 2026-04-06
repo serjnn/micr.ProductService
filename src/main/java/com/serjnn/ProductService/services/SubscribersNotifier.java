@@ -2,7 +2,6 @@ package com.serjnn.ProductService.services;
 
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
-import com.serjnn.ProductService.kafka.kafkaProducer.KafkaSender;
 import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,10 +17,10 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class SubscribersNotifier {
     private final SubscribersRepository subscribersRepository;
-    private final KafkaSender kafkaSender;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    @Value("${app.kafka.topic.discount-notifications}")
-    private String discountNotifTopic;
+    @Value("${app.redis.channel.discount-notifications}")
+    private String discountNotifChannel;
 
     public void notifySubscribers(DiscountChangesDto discountChangesDto) {
         log.info("notifying subscribers " + discountChangesDto);
@@ -38,7 +38,7 @@ public class SubscribersNotifier {
                         clientId,
                         discountChangesDto.newDiscount()
                 );
-                kafkaSender.sendDiscountNotification(discountNotifTopic, notification);
+                redisTemplate.convertAndSend(discountNotifChannel, notification);
             });
             pageable = pageable.next();
         } while (clientIdsSlice.hasNext());

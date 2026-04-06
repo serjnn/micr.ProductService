@@ -44,4 +44,9 @@ public class DiscountCacheManager {
     public void clearCache() {
         redisTemplate.delete(DISCOUNTS_HASH_KEY);
     }
+
+    public void removeFromCache(Long productId) {
+        log.info("Removing product {} from cache", productId);
+        redisTemplate.opsForHash().delete(DISCOUNTS_HASH_KEY, productId.toString());
+    }
 }
