@@ -1,6 +1,7 @@
 package com.serjnn.ProductService.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,13 +23,12 @@ public class RedisDiscountListener implements MessageListener {
     public void onMessage(Message message, byte[] pattern) {
         try {
             log.info("Received message from Redis channel: {}", new String(message.getChannel()));
-            // RedisTemplate with GenericJackson2JsonRedisSerializer might add class info or just JSON
-            // We need to be careful about how it's serialized in DiscountService
-            // In DiscountService we used GenericJackson2JsonRedisSerializer
             
             DiscountChangesDto dto = objectMapper.readValue(message.getBody(), DiscountChangesDto.class);
-            log.info("Evicting product {} from cache due to discount change", dto.productId());
-            discountCacheManager.removeFromCache(dto.productId());
+            log.info("Updating product {} in cache with new discount: {}", dto.productId(), dto.newDiscount());
+            
+            CacheableDiscountDto newCacheDto = new CacheableDiscountDto(dto.productId(), dto.newDiscount());
+            discountCacheManager.addToCache(newCacheDto);
         } catch (IOException e) {
             log.error("Failed to parse Redis message", e);
         }

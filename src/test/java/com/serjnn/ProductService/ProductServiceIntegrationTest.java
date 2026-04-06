@@ -36,6 +36,7 @@ import com.redis.testcontainers.RedisContainer;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -182,6 +183,7 @@ public class ProductServiceIntegrationTest {
         redisTemplate.convertAndSend(discountEvictionChannel, discountChangesDto);
 
         // 4. Verify that redisTemplate was used to notify subscribers on discount-notifications channel
+        // and that cache is updated instantly
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             ArgumentCaptor<DiscountNotification> captor = ArgumentCaptor.forClass(DiscountNotification.class);
             verify(redisTemplate, atLeastOnce()).convertAndSend(eq(discountNotifChannel), captor.capture());
@@ -190,6 +192,11 @@ public class ProductServiceIntegrationTest {
             assertEquals(productId, notification.productId());
             assertEquals(999L, notification.clientId());
             assertEquals(20.0, notification.discount());
+
+            // Verify cache update
+            Optional<CacheableDiscountDto> cached = discountCacheManager.getDiscountByProductId(productId);
+            assertTrue(cached.isPresent());
+            assertEquals(20.0, cached.get().discount());
         });
     }
 }
