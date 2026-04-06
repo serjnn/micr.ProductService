@@ -104,7 +104,7 @@ public class ProductService {
                     restTemplate.getForObject(discountUrl + productId, CacheableDiscountDto.class);
             return Optional.ofNullable(response);
         } catch (Exception e) {
-            log.error("Error while fetching discount for product {}: {}", productId,
+            log.error("Error while fetching discount via rest for product {}: {}", productId,
                     e.getMessage());
             return Optional.empty();
         }

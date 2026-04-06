@@ -113,13 +113,17 @@ public class ProductServiceIntegrationTest {
         Product product = new Product(null, "iPhone 15", "Latest model", new BigDecimal("1000.00"),
                 Category.ELECTRONICS);
 
-        mockMvc.perform(post("/api/v1/products")
+        String response = mockMvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(product)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        
+        Long productId = Long.parseLong(response);
+        assertNotNull(productId);
 
         // 2. Mock Discount Service response
-        CacheableDiscountDto discountDto = new CacheableDiscountDto(1L, 10.0); // 10% discount
+        CacheableDiscountDto discountDto = new CacheableDiscountDto(productId, 10.0); // 10% discount
         when(restTemplate.getForObject(anyString(), eq(CacheableDiscountDto.class)))
                 .thenReturn(discountDto);
 
