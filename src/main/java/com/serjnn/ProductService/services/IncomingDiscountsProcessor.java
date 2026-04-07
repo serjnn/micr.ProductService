@@ -19,6 +19,7 @@ public class IncomingDiscountsProcessor {
         log.info("Processing incoming discount changes: {}", discountChangesDto);
         CacheableDiscountDto cacheableDiscountDto =
                 DiscountMapper.INSTANCE.toCacheableDto(discountChangesDto);
+
         discountCacheManager.addToCache(cacheableDiscountDto);
         double newDiscount = discountChangesDto.newDiscount();
         double prevDiscount = discountChangesDto.prevDiscount();

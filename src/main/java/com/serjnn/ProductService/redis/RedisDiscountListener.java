@@ -3,6 +3,7 @@ package com.serjnn.ProductService.redis;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
+import com.serjnn.ProductService.services.IncomingDiscountsProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
@@ -19,6 +20,8 @@ public class RedisDiscountListener implements MessageListener {
     private final DiscountCacheManager discountCacheManager;
     private final ObjectMapper objectMapper;
 
+    private final IncomingDiscountsProcessor incomingDiscountsProcessor;
+
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
@@ -27,8 +30,8 @@ public class RedisDiscountListener implements MessageListener {
             DiscountChangesDto dto = objectMapper.readValue(message.getBody(), DiscountChangesDto.class);
             log.info("Updating product {} in cache with new discount: {}", dto.productId(), dto.newDiscount());
             
-            CacheableDiscountDto newCacheDto = new CacheableDiscountDto(dto.productId(), dto.newDiscount());
-            discountCacheManager.addToCache(newCacheDto);
+            incomingDiscountsProcessor.process(dto);
+
         } catch (IOException e) {
             log.error("Failed to parse Redis message", e);
         }
