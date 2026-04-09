@@ -26,7 +26,8 @@ public class IncomingDiscountsProcessor {
 
 
         if (Double.compare(prevDiscount, newDiscount) < 0) {
-            log.info("Discount increased for product {}. Notifying subscribers.", discountChangesDto.productId());
+            log.info("Discount increased for product {}. Notifying subscribers!",
+                    discountChangesDto.productId());
             subscribersNotifier.notifySubscribers(discountChangesDto);
         } else {
             log.info("Discount did not increase for product {}. No notification needed.", discountChangesDto.productId());

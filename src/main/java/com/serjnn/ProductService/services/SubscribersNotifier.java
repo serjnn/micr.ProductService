@@ -38,6 +38,7 @@ public class SubscribersNotifier {
                         clientId,
                         discountChangesDto.newDiscount()
                 );
+                log.info("NOTIFYING SUBSCRUBER {}", notification.clientId());
                 redisTemplate.convertAndSend(discountNotifChannel, notification);
             });
             pageable = pageable.next();
