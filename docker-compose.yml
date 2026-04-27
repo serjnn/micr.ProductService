@@ -5,11 +5,11 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: product_db
+      POSTGRES_DB: micr-db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d product_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d micr-db"]
       interval: 10s
       timeout: 5s
       retries: 5
