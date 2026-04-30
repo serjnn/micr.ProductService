@@ -7,9 +7,12 @@ import com.serjnn.ProductService.models.Subscriber;
 import com.serjnn.ProductService.redis.DiscountCacheManager;
 import com.serjnn.ProductService.repo.ProductRepository;
 import com.serjnn.ProductService.repo.SubscribersRepository;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +33,10 @@ public class ProductService {
     private final RestTemplate restTemplate;
     private final SubscribersRepository subscribersRepository;
     private final DiscountCacheManager discountCacheManager;
+
+    @Autowired
+    @Lazy
+    private ProductService self;
 
     @Value("${app.services.discount-url}")
     private String discountUrl;
@@ -59,7 +66,7 @@ public class ProductService {
 
     private List<Product> countDiscount(List<Product> products) {
         return products.stream().map(product -> {
-            Optional<CacheableDiscountDto> discountOpt = getDiscountByAnyCost(product.id());
+            Optional<CacheableDiscountDto> discountOpt = self.getDiscountByAnyCost(product.id());
             if (discountOpt.isPresent() && discountOpt.get().discount() > 0) {
                 BigDecimal discount = BigDecimal.valueOf(discountOpt.get().discount());
 
@@ -77,6 +84,7 @@ public class ProductService {
         }).collect(Collectors.toList());
     }
 
+    @Retry(name = "discountService", fallbackMethod = "getDiscountFallback")
     public Optional<CacheableDiscountDto> getDiscountByAnyCost(Long id) {
         log.debug("Fetching discount for product {} from cache", id);
         Optional<CacheableDiscountDto> cached = discountCacheManager.getDiscountByProductId(id);
@@ -98,16 +106,16 @@ public class ProductService {
         }
     }
 
+    public Optional<CacheableDiscountDto> getDiscountFallback(Long id, Exception e) {
+        log.error("Error fetching discount for product {} after retries: {}. Using fallback (0.0 discount).", 
+                id, e.getMessage());
+        return Optional.of(new CacheableDiscountDto(id, 0.0));
+    }
+
     private Optional<CacheableDiscountDto> askDiscountService(Long productId) {
-        try {
-            CacheableDiscountDto response =
-                    restTemplate.getForObject(discountUrl + productId, CacheableDiscountDto.class);
-            return Optional.ofNullable(response);
-        } catch (Exception e) {
-            log.error("Error while fetching discount via rest for product {}: {}", productId,
-                    e.getMessage());
-            return Optional.empty();
-        }
+        CacheableDiscountDto response =
+                restTemplate.getForObject(discountUrl + productId, CacheableDiscountDto.class);
+        return Optional.ofNullable(response);
     }
 
     public Long add(Product product) {
