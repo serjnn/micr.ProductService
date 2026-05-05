@@ -74,6 +74,16 @@ public class ProductRepository {
         return new SliceImpl<>(products, pageable, hasNext);
     }
 
+    public List<Product> findAllById(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("ids", ids);
+        String sql = "SELECT * FROM product WHERE id IN (:ids)";
+        return namedParameterJdbcTemplate.query(sql, parameters, rowMapper);
+    }
+
     public Optional<Product> findById(Long id) {
         List<Product> results = jdbcTemplate.query("SELECT * FROM product WHERE id = ?", rowMapper, id);
         return results.stream().findFirst();

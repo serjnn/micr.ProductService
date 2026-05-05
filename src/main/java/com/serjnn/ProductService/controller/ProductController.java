@@ -8,9 +8,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,23 +34,16 @@ public class ProductController {
     @GetMapping("/{id}")
     @Operation(summary = "Get product by ID")
     public Product getById(@PathVariable Long id) {
-        log.info("Received request to get product by ID: {}", id);
-        return productService.getDiscountByAnyCost(id)
-                .map(discount -> {
-                    log.info("Found discount for product {}. Re-fetching with updated price.", id);
-                    return productService.findAllByIds(List.of(id), PageRequest.of(0, 1)).getContent().get(0);
-                }) // Helper to re-fetch with discount
-                .orElseGet(() -> {
-                    log.info("No discount found for product {}. Fetching original product.", id);
-                    return productService.findById(id).orElseThrow();
-                });
+        log.info("Received request to get one product by ID: {}", id);
+        return productService.findById(id);
+
     }
 
     @PostMapping("/by-ids")
     @Operation(summary = "Get products by multiple IDs")
-    public Slice<Product> getProductsByIds(@RequestBody IdsRequest idsRequest, Pageable pageable) {
+    public List<Product> getProductsByIds(@RequestBody IdsRequest idsRequest) {
         log.info("Received request to get products by multiple IDs: {}", idsRequest.ids());
-        return productService.findAllByIds(idsRequest.ids(), pageable);
+        return productService.findAllByIds(idsRequest.ids());
     }
 
     @GetMapping("/category/{cat}")

@@ -60,7 +60,7 @@ public class ProductServiceIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&currentSchema=product_schema");
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.data.redis.host", redis::getHost);
@@ -100,8 +100,8 @@ public class ProductServiceIntegrationTest {
 
     @BeforeEach
     void setup() {
-        jdbcTemplate.execute("TRUNCATE TABLE subscribers RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE product RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE product_schema.subscribers RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE product_schema.product RESTART IDENTITY CASCADE");
         discountCacheManager.clearCache();
     }
 
@@ -162,8 +162,8 @@ public class ProductServiceIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(1)))
-                .andExpect(jsonPath("$.content[0].name").value("Book"));
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Book"));
     }
 
     @Test
