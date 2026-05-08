@@ -52,7 +52,7 @@ public class ProductRepository {
         return new SliceImpl<>(products, pageable, hasNext);
     }
 
-    public Slice<Product> findAllById(Iterable<Long> ids, Pageable pageable) {
+    public Slice<Product> findProductsById(Iterable<Long> ids, Pageable pageable) {
         List<Long> idList = (List<Long>) ids;
         if (idList.isEmpty()) {
             return new SliceImpl<>(Collections.emptyList(), pageable, false);
@@ -74,7 +74,7 @@ public class ProductRepository {
         return new SliceImpl<>(products, pageable, hasNext);
     }
 
-    public List<Product> findAllById(List<Long> ids) {
+    public List<Product> findProductsById(List<Long> ids) {
         if (ids.isEmpty()) {
             return Collections.emptyList();
         }

@@ -1,7 +1,7 @@
 package com.serjnn.ProductService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.serjnn.ProductService.dtos.CacheableDiscountDto;
+import com.serjnn.ProductService.dtos.DiscountResponseDto;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import com.serjnn.ProductService.dtos.IdsRequest;
@@ -121,8 +121,8 @@ public class ProductServiceIntegrationTest {
         assertNotNull(productId);
 
         // 2. Mock Discount Service response
-        CacheableDiscountDto discountDto = new CacheableDiscountDto(productId, 10.0); // 10% discount
-        when(restTemplate.getForObject(anyString(), eq(CacheableDiscountDto.class)))
+        DiscountResponseDto discountDto = new DiscountResponseDto(productId, 10.0); // 10% discount
+        when(restTemplate.getForObject(anyString(), eq(DiscountResponseDto.class)))
                 .thenReturn(discountDto);
 
         // 3. Retrieve all products and verify price is discounted
@@ -194,7 +194,7 @@ public class ProductServiceIntegrationTest {
             assertEquals(20.0, notification.discount());
 
             // Verify cache update
-            Optional<CacheableDiscountDto> cached = discountCacheManager.getDiscountByProductId(productId);
+            Optional<DiscountResponseDto> cached = discountCacheManager.getDiscountByProductId(productId);
             assertTrue(cached.isPresent());
             assertEquals(20.0, cached.get().discount());
         });

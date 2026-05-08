@@ -1,6 +1,6 @@
 package com.serjnn.ProductService.services;
 
-import com.serjnn.ProductService.dtos.CacheableDiscountDto;
+import com.serjnn.ProductService.dtos.DiscountResponseDto;
 import com.serjnn.ProductService.enums.Category;
 import com.serjnn.ProductService.models.Product;
 import com.serjnn.ProductService.models.Subscriber;
@@ -42,15 +42,16 @@ public class ProductService {
 
 
     public Slice<Product> findAllByIdsSliced(List<Long> ids, Pageable pageable) {
-        Slice<Product> productsSlice = productRepository.findAllById(ids, pageable);
+        Slice<Product> productsSlice = productRepository.findProductsById(ids, pageable);
         List<Product> discountedProducts =
                 productsDiscountManager.fetchAndCount(productsSlice.getContent());
         log.debug("Found {} discounted products", discountedProducts.size());
         return new SliceImpl<>(discountedProducts, pageable, productsSlice.hasNext());
     }
 
-    public List<Product> findAllByIds(List<Long> ids) {
-        List<Product> products = productRepository.findAllById(ids);
+    public List<Product> findProductsByIds(List<Long> ids) {
+        List<Product> products = productRepository.findProductsById(ids);
+
         List<Product> discountedProducts = productsDiscountManager.fetchAndCount(products);
         log.debug("Found {} discounted products (unpaginated)", discountedProducts.size());
         return discountedProducts;
@@ -60,7 +61,7 @@ public class ProductService {
         Product product =
                 productRepository.findById(id).orElseThrow(() -> new NoSuchElementException(
                         "Product not found with id: " + id));
-        return productsDiscountManager.fetchAndCountOne(product);
+        return productsDiscountManager.fetchAndCount(List.of(product)).get(0);
     }
 
     public Long add(Product product) {
@@ -72,10 +73,5 @@ public class ProductService {
         subscribersRepository.save(new Subscriber(null, productId, clientId));
     }
 
-    public Optional<CacheableDiscountDto> getDiscountFallback(Long id, Exception e) {
-        log.error(
-                "Error fetching discount for product {} after retries: {}. Using fallback (0.0 discount).",
-                id, e.getMessage());
-        return Optional.of(new CacheableDiscountDto(id, 0.0));
-    }
+
 }

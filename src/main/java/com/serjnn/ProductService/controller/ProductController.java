@@ -43,12 +43,12 @@ public class ProductController {
     @Operation(summary = "Get products by multiple IDs")
     public List<Product> getProductsByIds(@RequestBody IdsRequest idsRequest) {
         log.info("Received request to get products by multiple IDs: {}", idsRequest.ids());
-        return productService.findAllByIds(idsRequest.ids());
+        return productService.findProductsByIds(idsRequest.ids());
     }
 
     @GetMapping("/category/{cat}")
     @Operation(summary = "Get products by category")
-    public Slice<Product> bucket(@PathVariable("cat") Category category, Pageable pageable) {
+    public Slice<Product> getProductsByCategory(@PathVariable("cat") Category category, Pageable pageable) {
         log.info("Received request to get products by category: {}", category);
         return productService.findProductsByCategory(category, pageable);
     }

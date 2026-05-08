@@ -1,7 +1,7 @@
 package com.serjnn.ProductService.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.serjnn.ProductService.dtos.CacheableDiscountDto;
+import com.serjnn.ProductService.dtos.DiscountResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -19,24 +19,24 @@ public class DiscountCacheManager {
 
     private static final String DISCOUNTS_HASH_KEY = "discounts_hash";
 
-    public void addToCache(CacheableDiscountDto cacheableDiscountDto) {
-        log.info("adding to cache " + cacheableDiscountDto);
-        redisTemplate.opsForHash().put(DISCOUNTS_HASH_KEY, String.valueOf(cacheableDiscountDto.productId())
-                , mapToJsonString(cacheableDiscountDto));
+    public void addToCache(DiscountResponseDto discountResponseDto) {
+        log.info("adding to cache " + discountResponseDto);
+        redisTemplate.opsForHash().put(DISCOUNTS_HASH_KEY, String.valueOf(discountResponseDto.productId())
+                , mapToJsonString(discountResponseDto));
     }
 
     @SneakyThrows
-    private CacheableDiscountDto readFromJsonString(Object value) {
+    private DiscountResponseDto readFromJsonString(Object value) {
         if (value == null) return null;
-        return objectMapper.readValue(value.toString(), CacheableDiscountDto.class);
+        return objectMapper.readValue(value.toString(), DiscountResponseDto.class);
     }
 
     @SneakyThrows
-    private String mapToJsonString(CacheableDiscountDto discountEntity) {
+    private String mapToJsonString(DiscountResponseDto discountEntity) {
         return objectMapper.writeValueAsString(discountEntity);
     }
 
-    public Optional<CacheableDiscountDto> getDiscountByProductId(Long productId) {
+    public Optional<DiscountResponseDto> getDiscountByProductId(Long productId) {
         Object value = redisTemplate.opsForHash().get(DISCOUNTS_HASH_KEY, productId.toString());
         return Optional.ofNullable(readFromJsonString(value));
     }

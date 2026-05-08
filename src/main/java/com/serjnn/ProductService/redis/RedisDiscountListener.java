@@ -1,7 +1,6 @@
 package com.serjnn.ProductService.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
 import com.serjnn.ProductService.services.IncomingDiscountsProcessor;
 import lombok.RequiredArgsConstructor;
