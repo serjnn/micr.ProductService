@@ -1,18 +1,7 @@
 
-  [DONE] 3. Repository Boilerplate
-   * Issue: ProductRepository and SubscribersRepository manually implement "Slicing" logic (requesting pageSize + 1 and checking the size) using JdbcTemplate.
-   * Consequence: High code duplication and potential for bugs in pagination logic.
-   * Refactor: Created JdbcPaginationHelper to handle pagination and boilerplate SQL more cleanly.
-
-  4. Manual JSON Serialization in Cache
-   * Issue: DiscountCacheManager manually uses ObjectMapper to serialize/deserialize objects to JSON for Redis.
-   * Consequence: Repetitive code and bypasses Spring Data Redis's built-in serialization support.
-   * Refactor: Configure a RedisTemplate<String, CacheableDiscountDto> with a Jackson2JsonRedisSerializer in RedisConfig.
-
   5. Missing Global Exception Handling
    * Issue: The service lacks a @ControllerAdvice.
    * Consequence: Exceptions like NoSuchElementException will result in messy default 500 error responses instead of clean, user-friendly 404s or error DTOs.
    * Refactor: Implement a GlobalExceptionHandler to map specific exceptions to appropriate HTTP statuses.
 
 
-  Would you like me to proceed with implementing any of these refactorings? I recommend starting with the Circular Dependency and the Resilience4j fix as they impact reliability.

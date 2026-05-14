@@ -34,8 +34,8 @@ public class DiscountCacheManager {
     }
 
     public Optional<DiscountResponseDto> getDiscountByProductId(Long productId) {
-        Object value = redisTemplate.opsForHash().get(DISCOUNTS_HASH_KEY, productId.toString());
-        return Optional.ofNullable((DiscountResponseDto) value);
+        DiscountResponseDto value = (DiscountResponseDto) redisTemplate.opsForHash().get(DISCOUNTS_HASH_KEY, String.valueOf(productId));
+        return Optional.ofNullable(value);
     }
 
     public Map<Long, DiscountResponseDto> getDiscountsByProductIds(List<Long> productIds) {
@@ -50,7 +50,7 @@ public class DiscountCacheManager {
         Map<Long, DiscountResponseDto> result = new HashMap<>();
         for (int i = 0; i < productIds.size(); i++) {
             Object value = values.get(i);
-            if (value != null) {
+            if (value instanceof DiscountResponseDto) {
                 result.put(productIds.get(i), (DiscountResponseDto) value);
             }
         }
