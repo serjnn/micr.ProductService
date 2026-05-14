@@ -1,44 +1,60 @@
 package com.serjnn.ProductService.redis;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serjnn.ProductService.dtos.DiscountResponseDto;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DiscountCacheManager {
     private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
 
     private static final String DISCOUNTS_HASH_KEY = "discounts_hash";
 
     public void addToCache(DiscountResponseDto discountResponseDto) {
-        log.info("adding to cache " + discountResponseDto);
-        redisTemplate.opsForHash().put(DISCOUNTS_HASH_KEY, String.valueOf(discountResponseDto.productId())
-                , mapToJsonString(discountResponseDto));
+        log.info("Adding to cache: {}", discountResponseDto);
+        redisTemplate.opsForHash().put(DISCOUNTS_HASH_KEY, String.valueOf(discountResponseDto.productId()), discountResponseDto);
     }
 
-    @SneakyThrows
-    private DiscountResponseDto readFromJsonString(Object value) {
-        if (value == null) return null;
-        return objectMapper.readValue(value.toString(), DiscountResponseDto.class);
-    }
-
-    @SneakyThrows
-    private String mapToJsonString(DiscountResponseDto discountEntity) {
-        return objectMapper.writeValueAsString(discountEntity);
+    public void addAllToCache(List<DiscountResponseDto> discounts) {
+        if (discounts == null || discounts.isEmpty()) return;
+        log.info("Adding {} discounts to cache", discounts.size());
+        Map<String, DiscountResponseDto> map = discounts.stream()
+                .collect(Collectors.toMap(
+                        d -> String.valueOf(d.productId()),
+                        d -> d
+                ));
+        redisTemplate.opsForHash().putAll(DISCOUNTS_HASH_KEY, map);
     }
 
     public Optional<DiscountResponseDto> getDiscountByProductId(Long productId) {
         Object value = redisTemplate.opsForHash().get(DISCOUNTS_HASH_KEY, productId.toString());
-        return Optional.ofNullable(readFromJsonString(value));
+        return Optional.ofNullable((DiscountResponseDto) value);
+    }
+
+    public Map<Long, DiscountResponseDto> getDiscountsByProductIds(List<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) return Collections.emptyMap();
+
+        List<Object> keys = productIds.stream()
+                .map(String::valueOf)
+                .collect(Collectors.toList());
+
+        List<Object> values = redisTemplate.opsForHash().multiGet(DISCOUNTS_HASH_KEY, keys);
+
+        Map<Long, DiscountResponseDto> result = new HashMap<>();
+        for (int i = 0; i < productIds.size(); i++) {
+            Object value = values.get(i);
+            if (value != null) {
+                result.put(productIds.get(i), (DiscountResponseDto) value);
+            }
+        }
+        return result;
     }
 
     public void clearCache() {

@@ -12,6 +12,7 @@ import com.serjnn.ProductService.repo.SubscribersRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -122,8 +123,8 @@ public class ProductServiceIntegrationTest {
 
         // 2. Mock Discount Service response
         DiscountResponseDto discountDto = new DiscountResponseDto(productId, 10.0); // 10% discount
-        when(restTemplate.getForObject(anyString(), eq(DiscountResponseDto.class)))
-                .thenReturn(discountDto);
+        when(restTemplate.postForObject(anyString(), ArgumentMatchers.any(IdsRequest.class), eq(DiscountResponseDto[].class)))
+                .thenReturn(new DiscountResponseDto[]{discountDto});
 
         // 3. Retrieve all products and verify price is discounted
         mockMvc.perform(get("/api/v1/products"))

@@ -3,15 +3,13 @@ package com.serjnn.ProductService.services;
 import com.serjnn.ProductService.dtos.DiscountResponseDto;
 import com.serjnn.ProductService.models.Product;
 import com.serjnn.ProductService.redis.DiscountCacheManager;
-import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -22,21 +20,60 @@ public class ProductsDiscountManager {
     private final DiscountCacheManager discountCacheManager;
     private final DiscountClient discountClient;
 
-
     public List<Product> fetchAndCount(List<Product> products) {
+        if (products == null || products.isEmpty()) return Collections.emptyList();
+
+        List<Long> productIds = products.stream()
+                .map(Product::id)
+                .collect(Collectors.toList());
+
+        // 1. Try to get from cache
+        Map<Long, DiscountResponseDto> discountsMap = new HashMap<>(discountCacheManager.getDiscountsByProductIds(productIds));
+        
+        // 2. Identify missing IDs
+        List<Long> missingIds = productIds.stream()
+                .filter(id -> !discountsMap.containsKey(id))
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 3. Fetch missing from external service
+        if (!missingIds.isEmpty()) {
+            log.info("Cache miss for {} products. Fetching from external service.", missingIds.size());
+            List<DiscountResponseDto> fetchedDiscounts = discountClient.callDiscountServiceBatch(missingIds);
+            
+            // 4. Add to cache and update our map
+            if (!fetchedDiscounts.isEmpty()) {
+                discountCacheManager.addAllToCache(fetchedDiscounts);
+                fetchedDiscounts.forEach(d -> discountsMap.put(d.productId(), d));
+            }
+            
+            // 5. Handle IDs that still don't have discount info (cache default 0.0)
+            List<Long> stillMissingIds = missingIds.stream()
+                    .filter(id -> !discountsMap.containsKey(id))
+                    .toList();
+            
+            if (!stillMissingIds.isEmpty()) {
+                log.info("No discount info for {} products. Caching default 0.0.", stillMissingIds.size());
+                List<DiscountResponseDto> defaults = stillMissingIds.stream()
+                        .map(id -> new DiscountResponseDto(id, 0.0))
+                        .collect(Collectors.toList());
+                discountCacheManager.addAllToCache(defaults);
+                defaults.forEach(d -> discountsMap.put(d.productId(), d));
+            }
+        }
+
+        // 6. Apply discounts
         return products.stream()
                 .map(product -> {
-                    Optional<DiscountResponseDto> discountOpt = getDiscountByAnyCost(product.id());
-                    if (discountOpt.isPresent() && discountOpt.get()
-                            .discount() > 0) {
-                        BigDecimal discount = BigDecimal.valueOf(discountOpt.get()
-                                .discount());
-                        return countDiscountForProduct(product, discount);
+                    DiscountResponseDto discountDto = discountsMap.get(product.id());
+                    if (discountDto != null && discountDto.discount() > 0) {
+                        return countDiscountForProduct(product, BigDecimal.valueOf(discountDto.discount()));
                     }
                     return product;
                 })
                 .collect(Collectors.toList());
     }
+
 
     private Product countDiscountForProduct(Product product, BigDecimal discount) {
         BigDecimal newPrice = product.price()
@@ -49,32 +86,4 @@ public class ProductsDiscountManager {
         return new Product(product.id(), product.name(), product.description(), newPrice,
                 product.category());
     }
-
-
-    private Optional<DiscountResponseDto> getDiscountByAnyCost(Long id) {
-        log.debug("Trying to get discount {} from cache", id);
-        Optional<DiscountResponseDto> cached = discountCacheManager.getDiscountByProductId(id);
-        if (cached.isPresent()) {
-            log.debug("Cache hit for product {} discount", id);
-            return cached;
-        }
-
-        log.info("Cache miss for product {} discount. Fetching from external service.", id);
-        Optional<DiscountResponseDto> fetched = discountClient.callDiscountService(id);
-        if (fetched.isPresent()) {
-            log.info("Fetched discount for product {}: {}",
-                    id,
-                    fetched.get()
-                            .discount());
-            discountCacheManager.addToCache(fetched.get());
-            return fetched;
-        } else {
-            log.info("No discount information found for product {}. Caching default ( 0.0 ).", id);
-            discountCacheManager.addToCache(new DiscountResponseDto(id, 0.0));
-            return Optional.empty();
-        }
-    }
-
-
-
 }
