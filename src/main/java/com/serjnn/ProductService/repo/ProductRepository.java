@@ -26,30 +26,15 @@ public class ProductRepository {
 
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final JdbcPaginationHelper paginationHelper;
     private final DataClassRowMapper<Product> rowMapper = new DataClassRowMapper<>(Product.class);
 
     public Slice<Product> findAll(Pageable pageable) {
-        int pageSize = pageable.getPageSize();
-        String sql = "SELECT * FROM product LIMIT ? OFFSET ?";
-        List<Product> products = jdbcTemplate.query(sql, rowMapper, pageSize + 1, pageable.getOffset());
-        
-        boolean hasNext = products.size() > pageSize;
-        if (hasNext) {
-            products.remove(pageSize);
-        }
-        return new SliceImpl<>(products, pageable, hasNext);
+        return paginationHelper.queryForSlice(jdbcTemplate, "SELECT * FROM product", rowMapper, pageable);
     }
 
     public Slice<Product> findProductsByCategory(Category category, Pageable pageable) {
-        int pageSize = pageable.getPageSize();
-        String sql = "SELECT * FROM product WHERE category = ? LIMIT ? OFFSET ?";
-        List<Product> products = jdbcTemplate.query(sql, rowMapper, category.name(), pageSize + 1, pageable.getOffset());
-        
-        boolean hasNext = products.size() > pageSize;
-        if (hasNext) {
-            products.remove(pageSize);
-        }
-        return new SliceImpl<>(products, pageable, hasNext);
+        return paginationHelper.queryForSlice(jdbcTemplate, "SELECT * FROM product WHERE category = ?", rowMapper, pageable, category.name());
     }
 
     public Slice<Product> findProductsById(Iterable<Long> ids, Pageable pageable) {
@@ -57,21 +42,10 @@ public class ProductRepository {
         if (idList.isEmpty()) {
             return new SliceImpl<>(Collections.emptyList(), pageable, false);
         }
-        int pageSize = pageable.getPageSize();
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("ids", idList);
-        parameters.addValue("limit", pageSize + 1);
-        parameters.addValue("offset", pageable.getOffset());
         
-        String sql = "SELECT * FROM product WHERE id IN (:ids) LIMIT :limit OFFSET :offset";
-        List<Product> products = namedParameterJdbcTemplate.query(sql, parameters, rowMapper);
-        
-        boolean hasNext = products.size() > pageSize;
-        if (hasNext) {
-            products.remove(pageSize);
-        }
-        
-        return new SliceImpl<>(products, pageable, hasNext);
+        return paginationHelper.queryForSlice(namedParameterJdbcTemplate, "SELECT * FROM product WHERE id IN (:ids)", parameters, rowMapper, pageable);
     }
 
     public List<Product> findProductsById(List<Long> ids) {

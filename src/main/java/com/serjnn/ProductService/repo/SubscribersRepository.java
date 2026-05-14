@@ -17,21 +17,11 @@ import java.util.List;
 public class SubscribersRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final JdbcPaginationHelper paginationHelper;
     private final DataClassRowMapper<Subscriber> rowMapper = new DataClassRowMapper<>(Subscriber.class);
 
     public Slice<Long> findClientIdsByProductId(Long productId, Pageable pageable) {
-        int pageSize = pageable.getPageSize();
-        String sql = "SELECT client_id FROM subscribers WHERE product_id = ? LIMIT ? OFFSET ?";
-        List<Long> clientIds = jdbcTemplate.queryForList(sql, Long.class, productId, pageSize + 1, pageable.getOffset());
-        
-        // Convert to mutable list if it's not
-        List<Long> resultList = new ArrayList<>(clientIds);
-        
-        boolean hasNext = resultList.size() > pageSize;
-        if (hasNext) {
-            resultList.remove(pageSize);
-        }
-        return new SliceImpl<>(resultList, pageable, hasNext);
+        return paginationHelper.queryForSlice(jdbcTemplate, "SELECT client_id FROM subscribers WHERE product_id = ?", Long.class, pageable, productId);
     }
 
     public void save(Subscriber subscriber) {
