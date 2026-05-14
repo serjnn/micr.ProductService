@@ -168,6 +168,14 @@ public class ProductServiceIntegrationTest {
     }
 
     @Test
+    void shouldReturn404WhenProductNotFound() throws Exception {
+        mockMvc.perform(get("/api/v1/products/99999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("Product not found with id: 99999"));
+    }
+
+    @Test
     void shouldProcessDiscountChangeAndNotifySubscribers() throws Exception {
         // 1. Create product and subscriber
         productRepository.save(new Product(null, "Redis Product", "Redis Desc", new BigDecimal("100.00"), Category.ELECTRONICS));

@@ -1,7 +1,0 @@
-
-  5. Missing Global Exception Handling
-   * Issue: The service lacks a @ControllerAdvice.
-   * Consequence: Exceptions like NoSuchElementException will result in messy default 500 error responses instead of clean, user-friendly 404s or error DTOs.
-   * Refactor: Implement a GlobalExceptionHandler to map specific exceptions to appropriate HTTP statuses.
-
-
