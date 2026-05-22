@@ -10,6 +10,7 @@ spring:
       auto-commit-interval: ${KAFKA_CONSUMER_AUTO_COMMIT_INTERVAL:100}
       value-default-type: ${KAFKA_CONSUMER_VALUE_DEFAULT_TYPE:com.serjnn.ProductService.dtos.DiscountChangesDto}
       trusted-packages: ${KAFKA_CONSUMER_TRUSTED_PACKAGES:*}
+      max-poll-records: ${KAFKA_CONSUMER_MAX_POLL_RECORDS:50}
     producer:
       acks: ${KAFKA_PRODUCER_ACKS:all}
     listener:

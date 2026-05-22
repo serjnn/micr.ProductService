@@ -32,6 +32,7 @@ public class KafkaConsumerConfiguration {
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, kafkaConfigProperties.getConsumer().getEnableAutoCommit());
         props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, kafkaConfigProperties.getConsumer().getAutoCommitInterval());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, kafkaConfigProperties.getConsumer().getAutoOffsetReset());
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, kafkaConfigProperties.getConsumer().getMaxPollRecords());
 
         props.put(JsonDeserializer.TRUSTED_PACKAGES, kafkaConfigProperties.getConsumer().getTrustedPackages());
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, kafkaConfigProperties.getConsumer().getValueDefaultType());
@@ -47,6 +48,7 @@ public class KafkaConsumerConfiguration {
         ConcurrentKafkaListenerContainerFactory<String, DiscountChangesDto> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        factory.setBatchListener(true);
         return factory;
     }
 }

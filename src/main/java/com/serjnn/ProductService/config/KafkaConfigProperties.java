@@ -20,6 +20,7 @@ public class KafkaConfigProperties {
         private String autoCommitInterval;
         private String valueDefaultType;
         private String trustedPackages;
+        private Integer maxPollRecords;
     }
 
     @Data
