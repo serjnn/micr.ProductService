@@ -60,12 +60,22 @@ logging:
     root: ${LOGGING_LEVEL_ROOT:INFO}
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
   tracing:
     sampling:
       probability: 1.0
   zipkin:
     tracing:
       endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        kafka.consumer.fetch.manager.fetch.latency: true
+        kafka.producer.request.latency: true
 
 eureka:
   client:
