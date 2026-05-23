@@ -3,6 +3,7 @@ package com.serjnn.ProductService.kafka.kafkaConsumer;
 
 import com.serjnn.ProductService.config.KafkaConfigProperties;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.MicrometerConsumerListener;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.HashMap;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class KafkaConsumerConfiguration {
 
     private final KafkaConfigProperties kafkaConfigProperties;
+    private final MeterRegistry meterRegistry;
 
     @Bean
     public ConsumerFactory<String, DiscountChangesDto> consumerFactory() {
@@ -38,9 +41,10 @@ public class KafkaConsumerConfiguration {
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, kafkaConfigProperties.getConsumer().getValueDefaultType());
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
+        DefaultKafkaConsumerFactory<String, DiscountChangesDto> factory = new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
                 new JsonDeserializer<>(DiscountChangesDto.class));
-
+        factory.addListener(new MicrometerConsumerListener<>(meterRegistry));
+        return factory;
     }
 
     @Bean

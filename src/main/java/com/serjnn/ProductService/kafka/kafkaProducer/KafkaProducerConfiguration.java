@@ -4,6 +4,7 @@ package com.serjnn.ProductService.kafka.kafkaProducer;
 import com.serjnn.ProductService.config.AppKafkaProperties;
 import com.serjnn.ProductService.config.KafkaConfigProperties;
 import com.serjnn.ProductService.dtos.DiscountNotification;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.MicrometerProducerListener;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -25,6 +27,7 @@ public class KafkaProducerConfiguration {
 
     private final KafkaConfigProperties kafkaConfigProperties;
     private final AppKafkaProperties appKafkaProperties;
+    private final MeterRegistry meterRegistry;
 
     @Bean
     public NewTopic discountNotifTopic() {
@@ -40,7 +43,10 @@ public class KafkaProducerConfiguration {
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         configProps.put(ProducerConfig.ACKS_CONFIG, kafkaConfigProperties.getProducer().getAcks());
-        return new DefaultKafkaProducerFactory<>(configProps);
+        
+        DefaultKafkaProducerFactory<String, DiscountNotification> factory = new DefaultKafkaProducerFactory<>(configProps);
+        factory.addListener(new MicrometerProducerListener<>(meterRegistry));
+        return factory;
     }
 
     @Bean
