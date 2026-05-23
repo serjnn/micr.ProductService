@@ -77,7 +77,7 @@ management:
       endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
   metrics:
     tags:
-      application:  product
+      application: product
     distribution:
       percentiles-histogram:
         http.server.requests: true
@@ -92,3 +92,5 @@ eureka:
       defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP:true}
+
+kind: Application
