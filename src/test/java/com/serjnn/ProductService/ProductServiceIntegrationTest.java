@@ -64,7 +64,10 @@ public class ProductServiceIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.url", () -> {
+            String url = postgres.getJdbcUrl();
+            return url + (url.contains("?") ? "&" : "?") + "currentSchema=product_schema";
+        });
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.data.redis.host", redis::getHost);
