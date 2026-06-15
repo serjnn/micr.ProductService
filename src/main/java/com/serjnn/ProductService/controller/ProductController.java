@@ -9,12 +9,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,15 +34,8 @@ public class ProductController {
     @Operation(summary = "Get product by ID")
     public Product getById(@PathVariable Long id) {
         log.info("Received request to get product by ID: {}", id);
-        return productService.getDiscountByAnyCost(id)
-                .map(discount -> {
-                    log.info("Found discount for product {}. Re-fetching with updated price.", id);
-                    return productService.findAllByIds(List.of(id), PageRequest.of(0, 1)).getContent().get(0);
-                }) // Helper to re-fetch with discount
-                .orElseGet(() -> {
-                    log.info("No discount found for product {}. Fetching original product.", id);
-                    return productService.findById(id).orElseThrow();
-                });
+        return productService.getByIdWithDiscount(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
     }
 
     @PostMapping("/by-ids")

@@ -1,0 +1,82 @@
+# Refactoring Suggestions for ProductService
+
+This document outlines potential improvements for the ProductService application, focusing on maintainability, scalability, and clean code practices.
+
+## 1. Architectural & Design Patterns
+
+### 1.1. Transition to Spring Data JDBC/JPA
+- **Current State:** `ProductRepository` and `SubscribersRepository` use `JdbcTemplate` with manual SQL and mapping.
+- **Suggestion:** Switch to Spring Data JDBC or Spring Data JPA.
+- **Benefit:** Reduces boilerplate code for CRUD operations and pagination. Since the project uses Java records as models, Spring Data JDBC is a natural fit as it supports records natively. This would eliminate the need for manual `Slice` management and `DataClassRowMapper` usage.
+
+### 1.2. Separation of Concerns in Service Layer
+- **Current State:** `ProductService` is responsible for product management, discount fetching (via external API), discount calculation, and client subscriptions.
+- **Suggestion:** 
+    - Extract discount-related logic (API calls, caching) into a `DiscountService`.
+    - Extract subscription logic into a `SubscriptionService`.
+- **Benefit:** Adheres to the Single Responsibility Principle, making the code easier to test and maintain.
+
+### 1.3. Logic Leakage in Controller
+- **Current State:** `ProductController.getById` contains logic to decide whether to re-fetch a product based on discount presence.
+- **Suggestion:** Move this logic into `ProductService.getByIdWithDiscount()`.
+- **Benefit:** Keeps the controller lean and ensures business logic is encapsulated in the service layer.
+
+---
+
+## 2. Infrastructure & Integration
+
+### 2.1. Declarative Caching with Spring Cache
+- **Current State:** `DiscountCacheManager` manually interacts with `RedisTemplate` and performs manual JSON serialization.
+- **Suggestion:** Use Spring Cache abstraction (`@Cacheable`, `@CachePut`).
+- **Benefit:** Simplifies caching logic, reduces error-prone manual serialization, and makes the caching strategy more declarative.
+
+### 2.2. Robust External Service Calls
+- **Current State:** `askDiscountService` uses `RestTemplate` with a generic `catch (Exception e)` block.
+- **Suggestion:** 
+    - Switch to `WebClient` or `RestClient` (modern alternatives to `RestTemplate`).
+    - Implement a circuit breaker and retry mechanism (e.g., using Resilience4j).
+- **Benefit:** Improves system resilience against failures in external services.
+
+### 2.3. Kafka Optimization
+- **Current State:** `SubscribersNotifier` sends notifications individually in a loop.
+- **Suggestion:** Consider batching or asynchronous sending for large numbers of subscribers.
+- **Benefit:** Increases throughput and reduces the time taken to notify all subscribers.
+
+---
+
+## 3. Code Quality & Standards
+
+### 3.1. Package Naming
+- **Current State:** `kafkaConsumer` and `kafkaProducer` use camelCase.
+- **Suggestion:** Rename to `consumer` and `producer` under the `kafka` package (standard lowercase naming).
+- **Benefit:** Aligns with standard Java naming conventions and improves project consistency.
+
+### 3.2. Hardcoded Values
+- **Current State:** `pageSize = 100` is hardcoded in `SubscribersNotifier`.
+- **Suggestion:** Move such constants to `application.yaml` via `@ConfigurationProperties`.
+- **Benefit:** Allows for easier configuration changes without code modifications.
+
+### 3.3. Logging Improvements
+- **Current State:** Some logs use string concatenation (e.g., `log.info("notifying subscribers " + discountChangesDto)`).
+- **Suggestion:** Use SLF4J placeholders (e.g., `log.info("Notifying subscribers: {}", discountChangesDto)`).
+- **Benefit:** Improves performance (avoids unnecessary string creation if the log level is disabled) and readability.
+
+### 3.4. Global Exception Handling
+- **Suggestion:** Implement a `@ControllerAdvice` for global exception handling.
+- **Benefit:** Provides a consistent API response structure for errors across the entire application.
+
+### 3.5. Duplicate Configuration Properties
+- **Current State:** `KafkaConfigProperties` mirrors many standard `spring.kafka` properties.
+- **Suggestion:** Verify if these are strictly necessary. Spring Boot already binds `spring.kafka.*` to its own internal configuration.
+- **Benefit:** Reduces redundant code and potential configuration drift.
+
+---
+
+## 4. Models & Domain Logic
+
+### 4.1. Price Calculation
+- **Suggestion:** Move the discount calculation logic from `ProductService` into a dedicated domain service or a helper method in a `ProductMapper` if it's purely for DTO transformation.
+- **Benefit:** Keeps the core service focused on orchestration rather than low-level math.
+
+### 4.2. Record Immutability
+- **Note:** The use of Java records for `Product` and `Subscriber` is a great choice for immutability. Ensure that any future field additions follow this pattern.
