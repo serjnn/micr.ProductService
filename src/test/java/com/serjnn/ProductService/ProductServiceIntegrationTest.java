@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -26,7 +27,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -39,8 +40,6 @@ import java.time.Duration;
 import java.util.List;
 
 import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -74,6 +73,8 @@ public class ProductServiceIntegrationTest {
         registry.add("spring.data.redis.port", () -> redis.getFirstMappedPort());
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
         registry.add("eureka.client.enabled", () -> "false");
+        registry.add("spring.cloud.loadbalancer.enabled", () -> "false");
+        registry.add("app.services.discount-url", () -> "http://discount/api/v1/discounts/");
     }
 
     @Autowired
@@ -94,14 +95,14 @@ public class ProductServiceIntegrationTest {
     @Autowired
     private com.serjnn.ProductService.redis.DiscountCacheManager discountCacheManager;
 
-    @MockBean
-    private RestTemplate restTemplate;
-
     @SpyBean
     private KafkaSender kafkaSender;
 
     @Autowired
     private KafkaTemplate kafkaTemplate;
+
+    @Value("${app.services.discount-url}")
+    private String discountUrl;
 
     @BeforeEach
     void setup() {
@@ -125,10 +126,18 @@ public class ProductServiceIntegrationTest {
         Long productId = Long.parseLong(response);
         assertNotNull(productId);
 
-        // 2. Mock Discount Service response
+        // 2. Mock RestClient behavior
         CacheableDiscountDto discountDto = new CacheableDiscountDto(productId, 10.0); // 10% discount
-        when(restTemplate.getForObject(anyString(), eq(CacheableDiscountDto.class)))
-                .thenReturn(discountDto);
+        RestClient mockRestClient = mock(RestClient.class);
+        RestClient.RequestHeadersUriSpec requestHeadersUriSpec = mock(RestClient.RequestHeadersUriSpec.class);
+        RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
+        RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+        discountCacheManager.setRestClient(mockRestClient);
+        when(mockRestClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(CacheableDiscountDto.class)).thenReturn(discountDto);
 
         // 3. Retrieve all products and verify price is discounted
         mockMvc.perform(get("/api/v1/products"))

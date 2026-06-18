@@ -94,3 +94,22 @@ eureka:
     prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP:true}
 
 kind: Application
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      discountService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+  retry:
+    instances:
+      discountService:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
