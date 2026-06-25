@@ -4,7 +4,10 @@ import com.serjnn.ProductService.dtos.DiscountNotification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -12,8 +15,15 @@ import org.springframework.stereotype.Service;
 public class KafkaSender {
     private final KafkaTemplate<String, DiscountNotification> kafkaTemplate;
 
-    public void sendDiscountNotification(String topicName, DiscountNotification discountNotification) {
+    public CompletableFuture<SendResult<String, DiscountNotification>> sendDiscountNotification(String topicName, DiscountNotification discountNotification) {
         log.info("Sending discount notification to topic {}: {}", topicName, discountNotification);
-        kafkaTemplate.send(topicName, discountNotification);
+        return kafkaTemplate.send(topicName, discountNotification)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Failed to send discount notification to topic {}: {}", topicName, discountNotification, ex);
+                    } else {
+                        log.debug("Successfully sent discount notification to topic {}: {}", topicName, discountNotification);
+                    }
+                });
     }
 }
