@@ -1,7 +1,9 @@
 package com.serjnn.ProductService.service;
 
 import com.serjnn.ProductService.dto.DiscountDto;
-import com.serjnn.ProductService.dto.IdsRequest;
+import com.serjnn.ProductService.dto.ProductMapper;
+import com.serjnn.ProductService.dto.ProductRequest;
+import com.serjnn.ProductService.dto.ProductResponse;
 import com.serjnn.ProductService.enums.Category;
 import com.serjnn.ProductService.model.Product;
 import com.serjnn.ProductService.model.Subscriber;
@@ -25,29 +27,37 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final WebClient webClient;
     private final SubscribersRepository subscribersRepository;
+    private final ProductMapper productMapper;
 
     public ProductService(ProductRepository productRepository,
                           WebClient.Builder webClientBuilder,
-                          SubscribersRepository subscribersRepository) {
+                          SubscribersRepository subscribersRepository,
+                          ProductMapper productMapper) {
         this.productRepository = productRepository;
         this.webClient = webClientBuilder.build();
         this.subscribersRepository = subscribersRepository;
+        this.productMapper = productMapper;
     }
 
-    public Flux<Product> findProductsByCategory(Category category) {
+    public Flux<ProductResponse> findProductsByCategory(Category category) {
         Flux<Product> products = productRepository.findProductsByCategory(category);
-        return countDiscount(products);
+        return countDiscount(products).map(productMapper::toResponse);
     }
 
-    public Flux<Product> findAll() {
+    public Flux<ProductResponse> findAll() {
         Flux<Product> products = productRepository.findAll();
-        return countDiscount(products);
+        return countDiscount(products).map(productMapper::toResponse);
     }
 
-    public Flux<Product> findProductsByIds(IdsRequest idsRequest) {
-        List<Long> ids = idsRequest.getIds();
+    public Flux<ProductResponse> findProductsByIds(List<Long> ids) {
         Flux<Product> products = productRepository.findAllById(ids);
-        return countDiscount(products);
+        return countDiscount(products).map(productMapper::toResponse);
+    }
+
+    public Mono<ProductResponse> findProductById(Long id) {
+        return productRepository.findById(id)
+                .flatMap(product -> countDiscount(Flux.just(product)).next())
+                .map(productMapper::toResponse);
     }
 
     private Flux<Product> countDiscount(Flux<Product> products) {
@@ -75,9 +85,9 @@ public class ProductService {
                 );
     }
 
-    public Mono<Void> add(Product product) {
-        return productRepository.save(product).then();
-
+    public Mono<ProductResponse> add(ProductRequest productRequest) {
+        Product product = productMapper.toEntity(productRequest);
+        return productRepository.save(product).map(productMapper::toResponse);
     }
 
     public Mono<Void> subscribe(Long clientId, Long productId) {
