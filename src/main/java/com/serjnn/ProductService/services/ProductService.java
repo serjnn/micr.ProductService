@@ -7,7 +7,7 @@ import com.serjnn.ProductService.models.Product;
 import com.serjnn.ProductService.models.Subscriber;
 import com.serjnn.ProductService.repo.ProductRepository;
 import com.serjnn.ProductService.repo.SubscribersRepository;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -15,15 +15,24 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
-    private final WebClient.Builder webClientBuilder;
-
+    private final WebClient webClient;
     private final SubscribersRepository subscribersRepository;
+
+    public ProductService(ProductRepository productRepository,
+                          WebClient.Builder webClientBuilder,
+                          SubscribersRepository subscribersRepository) {
+        this.productRepository = productRepository;
+        this.webClient = webClientBuilder.build();
+        this.subscribersRepository = subscribersRepository;
+    }
 
     public Flux<Product> findProductsByCategory(Category category) {
         Flux<Product> products = productRepository.findProductsByCategory(category);
@@ -42,12 +51,16 @@ public class ProductService {
     }
 
     private Flux<Product> countDiscount(Flux<Product> products) {
-        return webClientBuilder.build()
-                .get()
+        return webClient.get()
                 .uri("lb://discount/api/v1/all")
                 .retrieve()
                 .bodyToFlux(DiscountDto.class)
+                .timeout(Duration.ofSeconds(2))
                 .collectMap(DiscountDto::getProductId, DiscountDto::getDiscount)
+                .onErrorResume(e -> {
+                    log.error("Failed to retrieve discounts from discount service, defaulting to no discounts", e);
+                    return Mono.just(Collections.emptyMap());
+                })
                 .flatMapMany(discountsMap ->
                         products.map(product -> {
                             Double discount = discountsMap.get(product.getId());
