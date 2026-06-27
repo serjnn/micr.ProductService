@@ -1,4 +1,4 @@
-package com.serjnn.ProductService.kafka.kafkaProducer;
+package com.serjnn.ProductService.kafka.producer;
 
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import lombok.RequiredArgsConstructor;

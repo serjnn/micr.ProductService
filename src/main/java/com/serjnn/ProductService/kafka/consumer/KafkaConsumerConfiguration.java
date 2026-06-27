@@ -1,4 +1,4 @@
-package com.serjnn.ProductService.kafka.kafkaConsumer;
+package com.serjnn.ProductService.kafka.consumer;
 
 
 import com.serjnn.ProductService.dtos.DiscountDto;

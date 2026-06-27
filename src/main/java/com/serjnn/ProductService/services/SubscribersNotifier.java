@@ -3,7 +3,7 @@ package com.serjnn.ProductService.services;
 
 import com.serjnn.ProductService.dtos.DiscountDto;
 import com.serjnn.ProductService.dtos.DiscountNotification;
-import com.serjnn.ProductService.kafka.kafkaProducer.KafkaSender;
+import com.serjnn.ProductService.kafka.producer.KafkaSender;
 import com.serjnn.ProductService.repository.SubscribersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
