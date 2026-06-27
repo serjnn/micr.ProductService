@@ -62,7 +62,7 @@ public class ProductService {
 
     private Flux<Product> countDiscount(Flux<Product> products) {
         return webClient.get()
-                .uri("lb://discount/api/v1/all")
+                .uri("lb://discount/api/v1/discounts")
                 .retrieve()
                 .bodyToFlux(DiscountDto.class)
                 .timeout(Duration.ofSeconds(2))
