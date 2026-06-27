@@ -1,4 +1,4 @@
-package com.serjnn.ProductService.dtos;
+package com.serjnn.ProductService.dto;
 
 
 import lombok.*;

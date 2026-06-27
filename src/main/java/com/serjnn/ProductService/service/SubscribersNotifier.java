@@ -1,8 +1,8 @@
-package com.serjnn.ProductService.services;
+package com.serjnn.ProductService.service;
 
 
-import com.serjnn.ProductService.dtos.DiscountDto;
-import com.serjnn.ProductService.dtos.DiscountNotification;
+import com.serjnn.ProductService.dto.DiscountDto;
+import com.serjnn.ProductService.dto.DiscountNotification;
 import com.serjnn.ProductService.kafka.producer.KafkaSender;
 import com.serjnn.ProductService.repository.SubscribersRepository;
 import lombok.RequiredArgsConstructor;

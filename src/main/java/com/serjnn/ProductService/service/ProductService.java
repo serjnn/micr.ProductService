@@ -1,7 +1,7 @@
-package com.serjnn.ProductService.services;
+package com.serjnn.ProductService.service;
 
-import com.serjnn.ProductService.dtos.DiscountDto;
-import com.serjnn.ProductService.dtos.IdsRequest;
+import com.serjnn.ProductService.dto.DiscountDto;
+import com.serjnn.ProductService.dto.IdsRequest;
 import com.serjnn.ProductService.enums.Category;
 import com.serjnn.ProductService.model.Product;
 import com.serjnn.ProductService.model.Subscriber;

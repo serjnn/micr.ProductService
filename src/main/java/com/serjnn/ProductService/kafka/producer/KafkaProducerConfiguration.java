@@ -1,7 +1,7 @@
 package com.serjnn.ProductService.kafka.producer;
 
 
-import com.serjnn.ProductService.dtos.DiscountNotification;
+import com.serjnn.ProductService.dto.DiscountNotification;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;

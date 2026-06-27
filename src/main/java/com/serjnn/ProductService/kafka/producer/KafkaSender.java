@@ -1,6 +1,6 @@
 package com.serjnn.ProductService.kafka.producer;
 
-import com.serjnn.ProductService.dtos.DiscountNotification;
+import com.serjnn.ProductService.dto.DiscountNotification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;

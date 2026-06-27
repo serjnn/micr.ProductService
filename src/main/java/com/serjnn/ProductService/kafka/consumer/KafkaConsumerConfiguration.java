@@ -1,7 +1,7 @@
 package com.serjnn.ProductService.kafka.consumer;
 
 
-import com.serjnn.ProductService.dtos.DiscountDto;
+import com.serjnn.ProductService.dto.DiscountDto;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +32,7 @@ public class KafkaConsumerConfiguration {
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.serjnn.ProductService.dtos.DiscountDto");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.serjnn.ProductService.dto.DiscountDto");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
         return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
