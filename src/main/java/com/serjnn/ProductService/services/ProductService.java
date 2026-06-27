@@ -81,8 +81,14 @@ public class ProductService {
     }
 
     public Mono<Void> subscribe(Long clientId, Long productId) {
-        return subscribersRepository.save(new Subscriber(productId, clientId)).then();
+        log.info("Client {} requested subscription to product {}", clientId, productId);
+        return productRepository.existsById(productId)
+                .flatMap(exists -> {
+                    if (!exists) {
+                        return Mono.error(new IllegalArgumentException("Product with ID " + productId + " does not exist"));
+                    }
+                    return subscribersRepository.save(new Subscriber(productId, clientId));
+                })
+                .then();
     }
-
-
 }
