@@ -2,7 +2,7 @@ package com.serjnn.ProductService.controller;
 
 import com.serjnn.ProductService.dtos.IdsRequest;
 import com.serjnn.ProductService.enums.Category;
-import com.serjnn.ProductService.models.Product;
+import com.serjnn.ProductService.model.Product;
 import com.serjnn.ProductService.services.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

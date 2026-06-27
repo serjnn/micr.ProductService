@@ -1,4 +1,4 @@
-package com.serjnn.ProductService.models;
+package com.serjnn.ProductService.model;
 
 import com.serjnn.ProductService.enums.Category;
 import lombok.Getter;

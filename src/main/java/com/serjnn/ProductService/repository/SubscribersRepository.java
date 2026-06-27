@@ -1,6 +1,6 @@
 package com.serjnn.ProductService.repository;
 
-import com.serjnn.ProductService.models.Subscriber;
+import com.serjnn.ProductService.model.Subscriber;
 import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
