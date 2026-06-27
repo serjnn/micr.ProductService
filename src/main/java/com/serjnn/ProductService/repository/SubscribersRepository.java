@@ -1,4 +1,4 @@
-package com.serjnn.ProductService.repo;
+package com.serjnn.ProductService.repository;
 
 import com.serjnn.ProductService.models.Subscriber;
 import org.springframework.data.r2dbc.repository.Query;

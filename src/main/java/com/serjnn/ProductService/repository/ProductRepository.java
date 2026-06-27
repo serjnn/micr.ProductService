@@ -1,4 +1,4 @@
-package com.serjnn.ProductService.repo;
+package com.serjnn.ProductService.repository;
 
 import com.serjnn.ProductService.enums.Category;
 import com.serjnn.ProductService.models.Product;
