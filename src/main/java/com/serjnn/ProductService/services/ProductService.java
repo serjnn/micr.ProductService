@@ -13,6 +13,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -49,8 +51,11 @@ public class ProductService {
                 .flatMapMany(discountsMap ->
                         products.map(product -> {
                             Double discount = discountsMap.get(product.getId());
-                            if (discount != null) {
-                                product.setPrice((int) (product.getPrice() * (1 - (discount / 100))));
+                            if (discount != null && product.getPrice() != null) {
+                                BigDecimal originalPrice = product.getPrice();
+                                BigDecimal discountAmount = originalPrice.multiply(BigDecimal.valueOf(discount))
+                                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                                product.setPrice(originalPrice.subtract(discountAmount));
                             }
                             return product;
                         })

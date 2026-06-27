@@ -4,6 +4,7 @@ import com.serjnn.ProductService.enums.Category;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.math.BigDecimal;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -19,7 +20,7 @@ public class Product {
 
     private String description;
 
-    private Integer price; //TODO make this big decimal
+    private BigDecimal price;
 
     private Category category;
 
