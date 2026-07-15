@@ -67,6 +67,10 @@ logging:
     com.serjnn: info
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
   tracing:
     sampling:
       probability: 1.0
