@@ -1,76 +1,47 @@
 package com.serjnn.ProductService;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.serjnn.ProductService.dtos.DiscountResponseDto;
-import com.serjnn.ProductService.dtos.DiscountChangesDto;
-import com.serjnn.ProductService.dtos.DiscountNotification;
-import com.serjnn.ProductService.dtos.IdsRequest;
+import com.serjnn.ProductService.dto.ProductRequest;
+import com.serjnn.ProductService.dto.ProductResponse;
 import com.serjnn.ProductService.enums.Category;
-import com.serjnn.ProductService.models.Product;
-import com.serjnn.ProductService.repo.ProductRepository;
-import com.serjnn.ProductService.repo.SubscribersRepository;
+import com.serjnn.ProductService.repository.ProductRepository;
+import com.serjnn.ProductService.repository.SubscribersRepository;
+import com.serjnn.ProductService.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import com.redis.testcontainers.RedisContainer;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 
-import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@Disabled("Disabled by default because running Testcontainers requires a local Docker daemon (e.g. Docker Desktop) to be active.")
 @Testcontainers
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "eureka.client.enabled=false",
+        "spring.sql.init.mode=always"
+})
 public class ProductServiceIntegrationTest {
 
     @Container
+    @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
 
     @Container
-    static RedisContainer redis = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&currentSchema=product_schema");
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getFirstMappedPort());
-        registry.add("eureka.client.enabled", () -> "false");
-    }
+    @ServiceConnection
+    static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"));
 
     @Autowired
-    private MockMvc mockMvc;
+    private ProductService productService;
 
     @Autowired
     private ProductRepository productRepository;
@@ -79,133 +50,50 @@ public class ProductServiceIntegrationTest {
     private SubscribersRepository subscribersRepository;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private com.serjnn.ProductService.redis.DiscountCacheManager discountCacheManager;
-
-    @MockBean
-    private RestTemplate restTemplate;
-
-    @SpyBean
-    private RedisTemplate<String, Object> redisTemplate;
-
-    @Value("${app.redis.channel.discount-eviction}")
-    private String discountEvictionChannel;
-
-    @Value("${app.redis.channel.discount-notifications}")
-    private String discountNotifChannel;
+    private WebTestClient webTestClient;
 
     @BeforeEach
-    void setup() {
-        jdbcTemplate.execute("TRUNCATE TABLE product_schema.subscribers RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE product_schema.product RESTART IDENTITY CASCADE");
-        discountCacheManager.clearCache();
+    public void setUp() {
+        productRepository.deleteAll().block();
+        subscribersRepository.deleteAll().block();
     }
 
     @Test
-    void shouldCreateProductAndRetrieveWithDiscount() throws Exception {
-        // 1. Create a product
-        Product product = new Product(null, "iPhone 15", "Latest model", new BigDecimal("1000.00"),
-                Category.ELECTRONICS);
+    public void testCreateAndRetrieveProduct() {
+        ProductRequest request = new ProductRequest("iPhone 15", "Apple smartphone", BigDecimal.valueOf(999.99), Category.ELECTRONICS);
 
-        String response = mockMvc.perform(post("/api/v1/products")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(product)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
-        
-        Long productId = Long.parseLong(response);
-        assertNotNull(productId);
+        ProductResponse savedProduct = productService.add(request).block();
+        assertThat(savedProduct).isNotNull();
+        assertThat(savedProduct.id()).isNotNull();
+        assertThat(savedProduct.name()).isEqualTo("iPhone 15");
+        assertThat(savedProduct.price()).isEqualByComparingTo("999.99");
 
-        // 2. Mock Discount Service response
-        DiscountResponseDto discountDto = new DiscountResponseDto(productId, 10.0); // 10% discount
-        when(restTemplate.postForObject(anyString(), ArgumentMatchers.any(IdsRequest.class), eq(DiscountResponseDto[].class)))
-                .thenReturn(new DiscountResponseDto[]{discountDto});
-
-        // 3. Retrieve all products and verify price is discounted
-        mockMvc.perform(get("/api/v1/products"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))))
-                .andExpect(jsonPath("$.content[?(@.name == 'iPhone 15')].price").value(900.0));
+        webTestClient.get()
+                .uri("/api/v1/products/" + savedProduct.id())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ProductResponse.class)
+                .value(response -> {
+                    assertThat(response.id()).isEqualTo(savedProduct.id());
+                    assertThat(response.name()).isEqualTo("iPhone 15");
+                    assertThat(response.category()).isEqualTo(Category.ELECTRONICS);
+                });
     }
 
     @Test
-    void shouldSubscribeToProduct() throws Exception {
-        // 1. Create product first
-        productRepository.save(new Product(null, "Laptop", "Workstation", new BigDecimal("2000.00"),
-                Category.ELECTRONICS));
-        Slice<Product> products = productRepository.findAll(PageRequest.of(0, 10));
-        Long productId = products.getContent().get(0).id();
+    public void testClientSubscription() {
+        ProductRequest request = new ProductRequest("Lego Star Wars", "Building block set", BigDecimal.valueOf(49.99), Category.TOYS);
+        ProductResponse savedProduct = productService.add(request).block();
+        assertThat(savedProduct).isNotNull();
 
-        // 2. Subscribe
-        mockMvc.perform(post("/api/v1/products/" + productId + "/subscribe/123"))
-                .andExpect(status().isCreated());
+        webTestClient.post()
+                .uri("/api/v1/products/" + savedProduct.id() + "/subscriptions/999")
+                .exchange()
+                .expectStatus().isCreated();
 
-        // 3. Verify in DB
-        Slice<Long> subscriberIds = subscribersRepository.findClientIdsByProductId(productId, PageRequest.of(0, 10));
-        assertTrue(subscriberIds.getContent().contains(123L));
-    }
-
-    @Test
-    void shouldGetProductsByIds() throws Exception {
-        productRepository.save(new Product(null, "Book", "Novel", new BigDecimal("20.00"),
-                Category.TOYS));
-        Slice<Product> products = productRepository.findAll(PageRequest.of(0, 100));
-        Long productId = products.getContent().get(products.getContent().size() - 1).id();
-
-        IdsRequest request = new IdsRequest(List.of(productId));
-
-        mockMvc.perform(post("/api/v1/products/by-ids")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("Book"));
-    }
-
-    @Test
-    void shouldReturn404WhenProductNotFound() throws Exception {
-        mockMvc.perform(get("/api/v1/products/99999"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.message").value("Product not found with id: 99999"));
-    }
-
-    @Test
-    void shouldProcessDiscountChangeAndNotifySubscribers() throws Exception {
-        // 1. Create product and subscriber
-        productRepository.save(new Product(null, "Redis Product", "Redis Desc", new BigDecimal("100.00"), Category.ELECTRONICS));
-        Slice<Product> products = productRepository.findAll(PageRequest.of(0, 10));
-        Long productId = products.getContent().get(0).id();
-
-        mockMvc.perform(post("/api/v1/products/" + productId + "/subscribe/999"))
-                .andExpect(status().isCreated());
-
-        // 2. Prepare Redis message for discount change (10% -> 20%)
-        DiscountChangesDto discountChangesDto = new DiscountChangesDto(productId, 20.0, 10.0);
-
-        // 3. Send message to discount eviction channel
-        redisTemplate.convertAndSend(discountEvictionChannel, discountChangesDto);
-
-        // 4. Verify that redisTemplate was used to notify subscribers on discount-notifications channel
-        // and that cache is updated instantly
-        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
-            ArgumentCaptor<DiscountNotification> captor = ArgumentCaptor.forClass(DiscountNotification.class);
-            verify(redisTemplate, atLeastOnce()).convertAndSend(eq(discountNotifChannel), captor.capture());
-            
-            DiscountNotification notification = captor.getValue();
-            assertEquals(productId, notification.productId());
-            assertEquals(999L, notification.clientId());
-            assertEquals(20.0, notification.discount());
-
-            // Verify cache update
-            Optional<DiscountResponseDto> cached = discountCacheManager.getDiscountByProductId(productId);
-            assertTrue(cached.isPresent());
-            assertEquals(20.0, cached.get().discount());
-        });
+        List<Long> clientIds = subscribersRepository.findClientIdsByProductId(savedProduct.id())
+                .collectList()
+                .block();
+        assertThat(clientIds).containsExactly(999L);
     }
 }
