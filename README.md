@@ -25,7 +25,7 @@ The **Product Service** is a microservice responsible for managing the product c
 ## API Documentation
 
 The service exposes a RESTful API. When the service is running, you can access the interactive Swagger UI at:
-`http://localhost:7002/swagger-ui.html`
+`http://localhost:7022/swagger-ui.html`
 
 ### Product Endpoints
 
@@ -83,4 +83,4 @@ Flyway automatically applies migrations from `src/main/resources/db/migration` o
 ```bash
 ./mvnw spring-boot:run
 ```
-The service will start on port `7002`.
+The service will start on port `7022`.

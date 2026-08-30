@@ -24,14 +24,17 @@ public class DiscountService {
     }
 
     public Product applyDiscount(Product product) {
+        if (product == null || product.price() == null) {
+            return product;
+        }
         Optional<CacheableDiscountDto> discountOpt = getDiscountByAnyCost(product.id());
-        if (discountOpt.isPresent() && discountOpt.get().discount() > 0) {
+        if (discountOpt.isPresent() && discountOpt.get().discount() != null && discountOpt.get().discount() > 0) {
             BigDecimal discount = BigDecimal.valueOf(discountOpt.get().discount());
 
+            BigDecimal discountFactor = BigDecimal.ONE.subtract(
+                    discount.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
             BigDecimal newPrice = product.price()
-                    .multiply(
-                            BigDecimal.ONE.subtract(
-                                    discount.divide(BigDecimal.valueOf(100))))
+                    .multiply(discountFactor)
                     .setScale(2, RoundingMode.HALF_UP);
             log.debug("Applied discount {}% to product {}. New price: {}", discount,
                     product.id(), newPrice);

@@ -18,6 +18,11 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.kafka.listener.CommonErrorHandler;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.util.backoff.ExponentialBackOff;
+
 @Configuration
 @RequiredArgsConstructor
 public class KafkaConsumerConfiguration {
@@ -48,11 +53,20 @@ public class KafkaConsumerConfiguration {
     }
 
     @Bean
+    public CommonErrorHandler kafkaErrorHandler() {
+        ExponentialBackOff backOff = new ExponentialBackOff(1000L, 2.0);
+        backOff.setMaxElapsedTime(10000L);
+        return new DefaultErrorHandler(backOff);
+    }
+
+    @Bean
     public ConcurrentKafkaListenerContainerFactory<String, DiscountChangesDto> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, DiscountChangesDto> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         factory.setBatchListener(true);
+        factory.setCommonErrorHandler(kafkaErrorHandler());
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
         return factory;
     }
 }
