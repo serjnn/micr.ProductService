@@ -101,4 +101,12 @@ public class ProductService {
     public void unsubscribe(Long clientId, Long productId) {
         subscriptionService.unsubscribe(clientId, productId);
     }
+
+    public Slice<Long> getSubscribedProductIds(Long clientId, Pageable pageable) {
+        return subscriptionService.getSubscribedProductIds(clientId, pageable);
+    }
+
+    public Slice<Long> getSubscriberClientIds(Long productId, Pageable pageable) {
+        return subscriptionService.getSubscriberClientIds(productId, pageable);
+    }
 }

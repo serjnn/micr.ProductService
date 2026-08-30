@@ -31,17 +31,23 @@ The service exposes a RESTful API. When the service is running, you can access t
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/v1/products` | Retrieve all products. |
+| `GET` | `/api/v1/products` | Retrieve all products (paginated). |
 | `GET` | `/api/v1/products/{id}` | Get product details by ID (includes current discount info). |
 | `POST` | `/api/v1/products/by-ids` | Bulk retrieve products by a list of IDs. |
 | `GET` | `/api/v1/products/category/{cat}` | Filter products by category (`ELECTRONICS`, `FOOD`, `CLOTH`, `TOYS`). |
+| `GET` | `/api/v1/products/search?keyword={kw}` | Search products by name or description. |
 | `POST` | `/api/v1/products` | Add a new product to the catalog. |
+| `PUT` | `/api/v1/products/{id}` | Update an existing product. |
+| `DELETE` | `/api/v1/products/{id}` | Remove a product from the catalog. |
 
 ### Subscription Endpoints
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/v1/products/{productId}/subscribe/{clientId}` | Subscribe a specific client to a product's discount updates. |
+| `POST` | `/api/v1/products/{productId}/subscribe/{clientId}` | Subscribe a client to a product's discount updates. |
+| `DELETE` | `/api/v1/products/{productId}/subscribe/{clientId}` | Unsubscribe a client from discount updates. |
+| `GET` | `/api/v1/products/{productId}/subscribers` | List all subscriber client IDs for a product. |
+| `GET` | `/api/v1/products/client/{clientId}/subscriptions` | List all subscribed product IDs for a client. |
 
 ---
 

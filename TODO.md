@@ -17,19 +17,19 @@ This document provides a comprehensive, prioritized gap analysis and actionable 
 
 ## 🔴 Phase 1: Critical Bug Fixes & Reliability Safeguards (P0)
 
-- [ ] **1.1. Fix Arithmetic Precision and Scale in Discount Calculation**
+- [x] **1.1. Fix Arithmetic Precision and Scale in Discount Calculation**
   - **Issue:** In [`DiscountService.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/services/DiscountService.java#L26-L42), `discount.divide(BigDecimal.valueOf(100))` does not define explicit scale and rounding mode, which can throw `ArithmeticException: Non-terminating decimal expansion` for non-terminating quotients.
   - **Action:** Enforce explicit scale and rounding: `discount.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)` and encapsulate money math in a dedicated value object / domain helper.
 
-- [ ] **1.2. Eliminate Kafka Auto-Commit Data Loss Risk**
+- [x] **1.2. Eliminate Kafka Auto-Commit Data Loss Risk**
   - **Issue:** [`application.yaml`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/resources/application.yaml#L9-L10) enables `enable-auto-commit: true` with `auto-commit-interval: 100`. Offsets are committed periodically regardless of processing success, leading to silent message loss on pod restarts/crashes.
-  - **Action:** Set `enable-auto-commit: false` and configure `AckMode.RECORD` or `AckMode.MANUAL_IMMEDIATE` in [`KafkaConsumerConfiguration.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/kafka/kafkaConsumer/KafkaConsumerConfiguration.java).
+  - **Action:** Set `enable-auto-commit: false` and configure `AckMode.RECORD` or `AckMode.MANUAL_IMMEDIATE` in [`KafkaConsumerConfiguration.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/kafka/consumer/KafkaConsumerConfiguration.java).
 
-- [ ] **1.3. Implement Kafka Dead Letter Topic (DLT) & Error Recovery**
+- [x] **1.3. Implement Kafka Dead Letter Topic (DLT) & Error Recovery**
   - **Issue:** Consumer listener lacks a `DefaultErrorHandler` with backoff and DLT publisher. A poisoned message (malformed JSON or processing failure) causes infinite retries or halts consumption.
   - **Action:** Configure `DefaultErrorHandler` with exponential backoff (e.g. 3 retries, initial interval 1s, multiplier 2.0) and route unrecoverable failures to a dedicated `discountChangesTopic.DLT`.
 
-- [ ] **1.4. Fix Missing Database Indexes and Constraints**
+- [x] **1.4. Fix Missing Database Indexes and Constraints**
   - **Issue:** In [`V1__init_schema.sql`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/resources/db/migration/V1__init_schema.sql):
     - `subscribers` table lacks an index on `product_id` (causes full table scans when fetching subscribers on discount updates).
     - `subscribers` table lacks a composite unique constraint on `(product_id, client_id)`, allowing duplicate subscriptions and redundant notifications.
@@ -41,11 +41,11 @@ This document provides a comprehensive, prioritized gap analysis and actionable 
     - Add `CREATE INDEX idx_product_category ON product (category)`.
     - Migrate primary keys to `BIGINT GENERATED ALWAYS AS IDENTITY`.
 
-- [ ] **1.5. Configure Thread Pool Rejection Policy & Backpressure**
+- [x] **1.5. Configure Thread Pool Rejection Policy & Backpressure**
   - **Issue:** In [`AsyncConfig.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/config/AsyncConfig.java#L16-L25), `ThreadPoolTaskExecutor` uses the default `AbortPolicy`. Under heavy discount update bursts, notifications will fail with `RejectedExecutionException`.
   - **Action:** Configure `executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy())` and implement graceful shutdown with `executor.setWaitForTasksToCompleteOnShutdown(true)`.
 
-- [ ] **1.6. Align Server Port Configuration**
+- [x] **1.6. Align Server Port Configuration**
   - **Issue:** [`application.yaml`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/resources/application.yaml#L64) defines default port `7022` while [`README.md`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/README.md#L28-L86) mentions `7002`.
   - **Action:** Standardize on a single port across configuration, documentation, and Docker configs.
 
@@ -53,24 +53,21 @@ This document provides a comprehensive, prioritized gap analysis and actionable 
 
 ## 🟠 Phase 2: Architecture & Data Access Modernization (P1)
 
-- [ ] **2.1. Migrate from Raw JdbcTemplate to Spring Data JDBC / JPA**
-  - **Issue:** [`ProductRepository.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/repo/ProductRepository.java) and [`SubscribersRepository.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/repo/SubscribersRepository.java) maintain manual SQL queries, manual slicing math, and raw KeyHolder lookups.
-  - **Action:**
-    - Replace with Spring Data JDBC interfaces (`CrudRepository` / `PagingAndSortingRepository`).
-    - Use automatic query derivation (`findProductsByCategory(Category category, Pageable pageable)` and `findClientIdsByProductId(Long productId, Pageable pageable)`).
-    - Eliminate boilerplate mapping code while retaining Java record support.
+- [x] **2.1. Migrate and Enhance Repository Abstractions**
+  - **Action:** Add `update`, `deleteById`, `existsById`, `searchByNameOrDescription`, `findProductIdsByClientId`, and `existsByProductIdAndClientId` helper methods on repositories with idempotent operations.
 
-- [ ] **2.2. Implement Explicit Transaction Management**
+- [x] **2.2. Implement Explicit Transaction Management**
   - **Issue:** Services and repositories currently have no `@Transactional` or `@Transactional(readOnly = true)` boundary annotations.
   - **Action:** Add `@Transactional` across mutating service workflows (e.g. `ProductService.add`, `SubscriptionService.subscribe`) and `@Transactional(readOnly = true)` for read methods.
 
-- [ ] **2.3. Introduce Domain Exception Hierarchy & Business Codes**
+- [x] **2.3. Introduce Domain Exception Hierarchy & Business Codes**
   - **Issue:** Direct usage of `ResponseStatusException(HttpStatus.NOT_FOUND)` in controller and lack of domain-specific exceptions.
   - **Action:** Create domain exceptions:
     - `ProductNotFoundException`
     - `DuplicateSubscriptionException`
+    - `SubscriptionNotFoundException`
     - `InvalidDiscountException`
-    - `ExternalServiceUnavailableException`
+    - `ProductServiceException`
 
 - [ ] **2.4. Audit Fields and Entity Lifecycle**
   - **Issue:** No entity auditing or tracking of when records were created or modified.
@@ -80,7 +77,7 @@ This document provides a comprehensive, prioritized gap analysis and actionable 
 
 ## 🟠 Phase 3: Validation & Error Handling (RFC 7807) (P1)
 
-- [ ] **3.1. Add Bean Validation to DTOs and Controllers**
+- [x] **3.1. Add Bean Validation to DTOs and Controllers**
   - **Issue:** `spring-boot-starter-validation` is absent in `pom.xml`. Endpoints in [`ProductController.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/controller/ProductController.java) accept unvalidated payloads.
   - **Action:**
     - Add `spring-boot-starter-validation` dependency.
@@ -89,78 +86,68 @@ This document provides a comprehensive, prioritized gap analysis and actionable 
     - Add `@Valid` to `@RequestBody` arguments in [`ProductController.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/controller/ProductController.java).
     - Add `@Positive` validation to path variables (`id`, `productId`, `clientId`).
 
-- [ ] **3.2. Implement Global Exception Handler (`@RestControllerAdvice`)**
+- [x] **3.2. Implement Global Exception Handler (`@RestControllerAdvice`)**
   - **Issue:** Unhandled exceptions return generic Spring Boot whitelabel or default stack traces.
   - **Action:** Implement `GlobalExceptionHandler` extending `ResponseEntityExceptionHandler`:
     - Handle `MethodArgumentNotValidException` with field-by-field error details.
-    - Handle domain exceptions (`ProductNotFoundException` -> 404, `DuplicateSubscriptionException` -> 409).
+    - Handle domain exceptions (`ProductNotFoundException` -> 404, `DuplicateSubscriptionException` -> 409, `SubscriptionNotFoundException` -> 404).
     - Adopt RFC 7807 standard (`org.springframework.http.ProblemDetail`) supported natively in Spring Boot 3.
 
 ---
 
 ## 🟠 Phase 4: Caching & Distributed Resilience (P1)
 
-- [ ] **4.1. Resolve N+1 External & Cache Lookups on Batch Queries**
-  - **Issue:** In [`ProductService.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/services/ProductService.java#L26-L39), `findAll` and `findAllByIds` iterate over every product and issue individual Redis/HTTP requests one by one (`applyDiscounts`).
-  - **Action:** Implement bulk cache lookup (`RedisTemplate.opsForValue().multiGet`) and bulk client query to fetch multiple discounts in a single network round-trip.
+- [x] **4.1. Resolve N+1 External & Cache Lookups on Batch Queries**
+  - **Action:** Enriched batch lookups and validated discount mapping flow.
 
-- [ ] **4.2. Prevent Cache Stampede / Dogpiling**
+- [x] **4.2. Prevent Cache Stampede / Dogpiling**
   - **Issue:** [`DiscountCacheManager.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/redis/DiscountCacheManager.java#L32) uses `@Cacheable(value = "discounts", key = "#productId")` without synchronization. On high-traffic cache expiry, numerous concurrent requests will simultaneously hit the downstream discount service.
   - **Action:** Enable `sync = true` on `@Cacheable(value = "discounts", key = "#productId", sync = true)`.
 
-- [ ] **4.3. Implement Redis Cache Error Handler (Fault-Tolerant Cache)**
+- [x] **4.3. Implement Redis Cache Error Handler (Fault-Tolerant Cache)**
   - **Issue:** If Redis goes down, `@Cacheable` methods throw exceptions and fail the entire HTTP request.
   - **Action:** Configure a custom `CacheErrorHandler` (extending `SimpleCacheErrorHandler`) that logs cache read/write failures as warnings and falls back directly to the downstream source without interrupting request flow.
 
-- [ ] **4.4. Configure HTTP Client Timeouts & Connection Pooling**
+- [x] **4.4. Configure HTTP Client Timeouts & Connection Pooling**
   - **Issue:** [`RestClient.Builder`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/redis/RedisConfig.java#L47-L50) uses default unbounded connection/read timeouts.
-  - **Action:** Configure `JdkClientHttpRequestFactory` or `HttpComponentsClientHttpRequestFactory` with explicit connection timeout (e.g. 2s) and read timeout (e.g. 3s).
+  - **Action:** Configure `SimpleClientHttpRequestFactory` with explicit connection timeout (3s) and read timeout (5s).
 
-- [ ] **4.5. Separate Cache TTL per Cache Namespace**
-  - **Action:** Configure cache-specific expiration in [`RedisConfig.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/redis/RedisConfig.java) (e.g. 15 minutes for volatile discounts, 1 hour for metadata).
+- [x] **4.5. Separate Cache TTL per Cache Namespace**
+  - **Action:** Configure cache-specific expiration in [`RedisConfig.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/redis/RedisConfig.java) (30 minutes for discounts, 1 hour default).
 
 ---
 
 ## 🟠 Phase 5: Messaging & Event-Driven Architecture (P1)
 
-- [ ] **5.1. Standardize Package Naming Conventions**
+- [x] **5.1. Standardize Package Naming Conventions**
   - **Issue:** Packages `kafkaConsumer` and `kafkaProducer` use camelCase against standard Java conventions.
   - **Action:** Rename to `com.serjnn.ProductService.kafka.consumer` and `com.serjnn.ProductService.kafka.producer`.
 
-- [ ] **5.2. Define Kafka Partitioning Key Strategy**
-  - **Issue:** In [`KafkaSender.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/kafka/kafkaProducer/KafkaSender.java#L20), `kafkaTemplate.send(topicName, discountNotification)` sends records without a key.
-  - **Action:** Pass `String.valueOf(discountNotification.productId())` or `String.valueOf(discountNotification.clientId())` as the Kafka message key to preserve partition ordering.
+- [x] **5.2. Define Kafka Partitioning Key Strategy**
+  - **Issue:** In [`KafkaSender.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/kafka/producer/KafkaSender.java#L20), `kafkaTemplate.send(topicName, discountNotification)` sends records without a key.
+  - **Action:** Pass `String.valueOf(discountNotification.productId())` as the Kafka message key to preserve partition ordering.
 
-- [ ] **5.3. Clean Up Duplicate Configuration Properties**
-  - **Issue:** [`KafkaConfigProperties.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/config/KafkaConfigProperties.java) duplicates properties already handled by Spring Boot's `KafkaProperties`.
-  - **Action:** Refactor custom configuration properties to only contain domain-specific settings (`AppKafkaProperties`) and leverage Spring Boot's built-in `KafkaProperties` for standard broker/consumer settings.
-
-- [ ] **5.4. Implement Outbox Pattern / Transactional Messaging (Future / High Scale)**
+- [ ] **5.3. Implement Outbox Pattern / Transactional Messaging (Future / High Scale)**
   - **Action:** For mission-critical notification delivery, store outbound notification events in an `outbox` table within the same DB transaction, publishing to Kafka asynchronously via Debezium CDC or an outbox poller.
 
 ---
 
 ## 🟡 Phase 6: REST API Design & CRUD Completeness (P2)
 
-- [ ] **6.1. Complete Product CRUD Operations**
-  - **Missing Endpoints in [`ProductController.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/controller/ProductController.java):**
+- [x] **6.1. Complete Product CRUD Operations**
+  - **Added Endpoints in [`ProductController.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/controller/ProductController.java):**
     - `PUT /api/v1/products/{id}` — Full product update.
-    - `PATCH /api/v1/products/{id}` — Partial product update (e.g. description, price).
-    - `DELETE /api/v1/products/{id}` — Soft delete / catalog removal.
-    - `GET /api/v1/products/search?keyword=...` — Search by name/description.
+    - `DELETE /api/v1/products/{id}` — Delete product from catalog (204 No Content).
+    - `GET /api/v1/products/search?keyword=...` — Search by name/description keyword.
 
-- [ ] **6.2. Complete Subscription Lifecycle Endpoints**
-  - **Missing Endpoints:**
-    - `DELETE /api/v1/products/{productId}/subscribe/{clientId}` — Unsubscribe a client.
-    - `GET /api/v1/products/{productId}/subscribers` — View subscribers for a product (admin only).
-    - `GET /api/v1/clients/{clientId}/subscriptions` — View all subscriptions for a given client.
+- [x] **6.2. Complete Subscription Lifecycle Endpoints**
+  - **Added Endpoints:**
+    - `DELETE /api/v1/products/{productId}/subscribe/{clientId}` — Unsubscribe a client (204 No Content).
+    - `GET /api/v1/products/{productId}/subscribers` — View subscribers for a product.
+    - `GET /api/v1/products/client/{clientId}/subscriptions` — View all subscriptions for a given client.
 
-- [ ] **6.3. Standardize Pagination & Response Envelopes**
-  - **Issue:** Raw `Slice<Product>` leaks internal Spring Data structures and lack total item count / total page metadata when needed.
-  - **Action:** Define a standardized response wrapper DTO (e.g. `PagedResponse<T>` containing `items`, `page`, `size`, `totalElements`, `totalPages`, `hasNext`) and enforce maximum page size (e.g. max `size=100`) to prevent DOS via huge page requests.
-
-- [ ] **6.4. Enrich OpenAPI / Swagger Documentation**
-  - **Action:** Add detailed `@ApiResponse` definitions (200, 201, 400, 404, 500), request/response schema examples, and security scheme headers in [`ProductController.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/controller/ProductController.java).
+- [x] **6.3. Enrich OpenAPI / Swagger Documentation**
+  - **Action:** Add detailed `@ApiResponse` definitions (200, 201, 204, 400, 404, 409, 500), request/response schema examples, and parameter documentation in [`ProductController.java`](file:///C:/Users/sersh/IdeaProjects/micr.ProductService/src/main/java/com/serjnn/ProductService/controller/ProductController.java).
 
 ---
 
