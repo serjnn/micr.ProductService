@@ -3,7 +3,7 @@ package com.serjnn.ProductService.services;
 import com.serjnn.ProductService.config.NotifierProperties;
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
-import com.serjnn.ProductService.kafka.kafkaProducer.KafkaSender;
+import com.serjnn.ProductService.kafka.producer.KafkaSender;
 import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;

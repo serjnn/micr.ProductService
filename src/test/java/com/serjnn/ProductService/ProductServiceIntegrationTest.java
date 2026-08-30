@@ -6,7 +6,7 @@ import com.serjnn.ProductService.dtos.DiscountChangesDto;
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import com.serjnn.ProductService.dtos.IdsRequest;
 import com.serjnn.ProductService.enums.Category;
-import com.serjnn.ProductService.kafka.kafkaProducer.KafkaSender;
+import com.serjnn.ProductService.kafka.producer.KafkaSender;
 import com.serjnn.ProductService.models.Product;
 import com.serjnn.ProductService.repo.ProductRepository;
 import com.serjnn.ProductService.repo.SubscribersRepository;

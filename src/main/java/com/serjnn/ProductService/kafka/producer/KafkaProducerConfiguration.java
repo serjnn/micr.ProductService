@@ -1,5 +1,4 @@
-package com.serjnn.ProductService.kafka.kafkaProducer;
-
+package com.serjnn.ProductService.kafka.producer;
 
 import com.serjnn.ProductService.config.AppKafkaProperties;
 import com.serjnn.ProductService.config.KafkaConfigProperties;
@@ -31,9 +30,9 @@ public class KafkaProducerConfiguration {
 
     @Bean
     public NewTopic discountNotifTopic() {
-        return TopicBuilder.name(appKafkaProperties.getTopic().getDiscountNotifications()).
-                partitions(appKafkaProperties.getTopic().getDiscountNotificationsPartitions()).
-                build();
+        return TopicBuilder.name(appKafkaProperties.getTopic().getDiscountNotifications())
+                .partitions(appKafkaProperties.getTopic().getDiscountNotificationsPartitions())
+                .build();
     }
 
     @Bean
@@ -43,7 +42,7 @@ public class KafkaProducerConfiguration {
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         configProps.put(ProducerConfig.ACKS_CONFIG, kafkaConfigProperties.getProducer().getAcks());
-        
+
         DefaultKafkaProducerFactory<String, DiscountNotification> factory = new DefaultKafkaProducerFactory<>(configProps);
         factory.addListener(new MicrometerProducerListener<>(meterRegistry));
         return factory;

@@ -1,4 +1,4 @@
-package com.serjnn.ProductService.kafka.kafkaProducer;
+package com.serjnn.ProductService.kafka.producer;
 
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +16,9 @@ public class KafkaSender {
     private final KafkaTemplate<String, DiscountNotification> kafkaTemplate;
 
     public CompletableFuture<SendResult<String, DiscountNotification>> sendDiscountNotification(String topicName, DiscountNotification discountNotification) {
-        log.info("Sending discount notification to topic {}: {}", topicName, discountNotification);
-        return kafkaTemplate.send(topicName, discountNotification)
+        String messageKey = String.valueOf(discountNotification.productId());
+        log.info("Sending discount notification to topic {} with key {}: {}", topicName, messageKey, discountNotification);
+        return kafkaTemplate.send(topicName, messageKey, discountNotification)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         log.error("Failed to send discount notification to topic {}: {}", topicName, discountNotification, ex);
