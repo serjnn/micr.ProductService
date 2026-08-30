@@ -95,4 +95,34 @@ public class ProductRepository {
         Number key = (Number) keyHolder.getKeys().get("id");
         return key != null ? key.longValue() : null;
     }
+
+    public boolean existsById(Long id) {
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(1) FROM product WHERE id = ?", Integer.class, id);
+        return count != null && count > 0;
+    }
+
+    public boolean update(Product product) {
+        int rows = jdbcTemplate.update(
+                "UPDATE product SET name = ?, description = ?, price = ?, category = ? WHERE id = ?",
+                product.name(), product.description(), product.price(), product.category().name(), product.id());
+        return rows > 0;
+    }
+
+    public boolean deleteById(Long id) {
+        int rows = jdbcTemplate.update("DELETE FROM product WHERE id = ?", id);
+        return rows > 0;
+    }
+
+    public Slice<Product> searchByNameOrDescription(String keyword, Pageable pageable) {
+        int pageSize = pageable.getPageSize();
+        String pattern = "%" + (keyword != null ? keyword.trim() : "") + "%";
+        String sql = "SELECT * FROM product WHERE LOWER(name) LIKE LOWER(?) OR LOWER(description) LIKE LOWER(?) LIMIT ? OFFSET ?";
+        List<Product> products = jdbcTemplate.query(sql, rowMapper, pattern, pattern, pageSize + 1, pageable.getOffset());
+
+        boolean hasNext = products.size() > pageSize;
+        if (hasNext) {
+            products.remove(pageSize);
+        }
+        return new SliceImpl<>(products, pageable, hasNext);
+    }
 }

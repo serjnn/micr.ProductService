@@ -34,8 +34,35 @@ public class SubscribersRepository {
         return new SliceImpl<>(resultList, pageable, hasNext);
     }
 
+    public boolean existsByProductIdAndClientId(Long productId, Long clientId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(1) FROM subscribers WHERE product_id = ? AND client_id = ?",
+                Integer.class, productId, clientId);
+        return count != null && count > 0;
+    }
+
+    public boolean deleteByProductIdAndClientId(Long productId, Long clientId) {
+        int rows = jdbcTemplate.update(
+                "DELETE FROM subscribers WHERE product_id = ? AND client_id = ?",
+                productId, clientId);
+        return rows > 0;
+    }
+
+    public Slice<Long> findProductIdsByClientId(Long clientId, Pageable pageable) {
+        int pageSize = pageable.getPageSize();
+        String sql = "SELECT product_id FROM subscribers WHERE client_id = ? LIMIT ? OFFSET ?";
+        List<Long> productIds = jdbcTemplate.queryForList(sql, Long.class, clientId, pageSize + 1, pageable.getOffset());
+
+        List<Long> resultList = new ArrayList<>(productIds);
+        boolean hasNext = resultList.size() > pageSize;
+        if (hasNext) {
+            resultList.remove(pageSize);
+        }
+        return new SliceImpl<>(resultList, pageable, hasNext);
+    }
+
     public void save(Subscriber subscriber) {
-        jdbcTemplate.update("INSERT INTO subscribers (product_id, client_id) VALUES (?, ?)",
+        jdbcTemplate.update("INSERT INTO subscribers (product_id, client_id) VALUES (?, ?) ON CONFLICT (product_id, client_id) DO NOTHING",
                 subscriber.productId(), subscriber.clientId());
     }
 }

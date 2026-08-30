@@ -1,6 +1,7 @@
 package com.serjnn.ProductService.services;
 
 import com.serjnn.ProductService.enums.Category;
+import com.serjnn.ProductService.exceptions.ProductNotFoundException;
 import com.serjnn.ProductService.models.Product;
 import com.serjnn.ProductService.repo.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +18,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class ProductService {
     private final ProductRepository productRepository;
     private final DiscountService discountService;
@@ -39,6 +42,12 @@ public class ProductService {
         return new SliceImpl<>(discountedProducts, pageable, productsSlice.hasNext());
     }
 
+    public Slice<Product> search(String keyword, Pageable pageable) {
+        Slice<Product> productsSlice = productRepository.searchByNameOrDescription(keyword, pageable);
+        List<Product> discountedProducts = discountService.applyDiscounts(productsSlice.getContent());
+        return new SliceImpl<>(discountedProducts, pageable, productsSlice.hasNext());
+    }
+
     public Optional<Product> findById(Long id) {
         return productRepository.findById(id);
     }
@@ -57,11 +66,39 @@ public class ProductService {
                 });
     }
 
+    @Transactional
     public Long add(Product product) {
+        log.info("Adding new product: {}", product.name());
         return productRepository.save(product);
     }
 
+    @Transactional
+    public Product update(Long id, Product product) {
+        log.info("Updating product with ID: {}", id);
+        if (!productRepository.existsById(id)) {
+            throw new ProductNotFoundException(id);
+        }
+        Product updated = new Product(id, product.name(), product.description(), product.price(), product.category());
+        productRepository.update(updated);
+        return updated;
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        log.info("Deleting product with ID: {}", id);
+        if (!productRepository.existsById(id)) {
+            throw new ProductNotFoundException(id);
+        }
+        productRepository.deleteById(id);
+    }
+
+    @Transactional
     public void subscribe(Long clientId, Long productId) {
         subscriptionService.subscribe(clientId, productId);
+    }
+
+    @Transactional
+    public void unsubscribe(Long clientId, Long productId) {
+        subscriptionService.unsubscribe(clientId, productId);
     }
 }
