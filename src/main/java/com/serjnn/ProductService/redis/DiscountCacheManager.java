@@ -29,7 +29,7 @@ public class DiscountCacheManager {
         this.restClient = restClient;
     }
 
-    @Cacheable(value = "discounts", key = "#productId")
+    @Cacheable(value = "discounts", key = "#productId", sync = true)
     @CircuitBreaker(name = "discountService", fallbackMethod = "fallbackGetDiscount")
     @Retry(name = "discountService")
     public Optional<CacheableDiscountDto> getDiscountByProductId(Long productId) {
