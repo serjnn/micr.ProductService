@@ -15,6 +15,7 @@ import org.springframework.kafka.core.MicrometerConsumerListener;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.util.backoff.ExponentialBackOff;
 
@@ -33,8 +34,10 @@ public class KafkaConsumerConfiguration {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.getBootstrapServers());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaConfigProperties.getConsumer().getGroupId());
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, kafkaConfigProperties.getConsumer().getEnableAutoCommit());
         props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, kafkaConfigProperties.getConsumer().getAutoCommitInterval());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, kafkaConfigProperties.getConsumer().getAutoOffsetReset());
@@ -44,8 +47,12 @@ public class KafkaConsumerConfiguration {
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, kafkaConfigProperties.getConsumer().getValueDefaultType());
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
-        DefaultKafkaConsumerFactory<String, DiscountChangesDto> factory = new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
-                new JsonDeserializer<>(DiscountChangesDto.class));
+        JsonDeserializer<DiscountChangesDto> jsonDeserializer = new JsonDeserializer<>(DiscountChangesDto.class, false);
+        DefaultKafkaConsumerFactory<String, DiscountChangesDto> factory = new DefaultKafkaConsumerFactory<>(
+                props,
+                new ErrorHandlingDeserializer<>(new StringDeserializer()),
+                new ErrorHandlingDeserializer<>(jsonDeserializer)
+        );
         factory.addListener(new MicrometerConsumerListener<>(meterRegistry));
         return factory;
     }
