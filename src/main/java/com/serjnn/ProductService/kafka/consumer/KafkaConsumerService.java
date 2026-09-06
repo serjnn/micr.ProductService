@@ -17,8 +17,8 @@ public class KafkaConsumerService {
     private final IncomingDiscountsProcessor incomingDiscountsProcessor;
 
     @KafkaListener(topics = "${app.kafka.topic.discount-changes}", groupId = "${spring.kafka.consumer.group-id}")
-    public void discountListener(List<DiscountChangesDto> discountChangesDtos) {
-        log.info("Received {} discount changes from Kafka batch", discountChangesDtos.size());
-        discountChangesDtos.forEach(incomingDiscountsProcessor::process);
+    public void discountListener(DiscountChangesDto discountChangesDto) {
+        log.info("Received discount change from Kafka: {}", discountChangesDto);
+        incomingDiscountsProcessor.process(discountChangesDto);
     }
 }

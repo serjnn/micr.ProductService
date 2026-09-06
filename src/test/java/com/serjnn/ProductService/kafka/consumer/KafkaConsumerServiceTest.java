@@ -27,14 +27,12 @@ class KafkaConsumerServiceTest {
     }
 
     @Test
-    @DisplayName("Should process each message in batch")
-    void shouldProcessBatchOfDiscountChanges() {
-        DiscountChangesDto d1 = new DiscountChangesDto(1L, 20.0, 10.0);
-        DiscountChangesDto d2 = new DiscountChangesDto(2L, 30.0, 15.0);
+    @DisplayName("Should process discount change message")
+    void shouldProcessDiscountChange() {
+        DiscountChangesDto dto = new DiscountChangesDto(1L, 20.0, 10.0);
 
-        kafkaConsumerService.discountListener(List.of(d1, d2));
+        kafkaConsumerService.discountListener(dto);
 
-        verify(incomingDiscountsProcessor, times(1)).process(d1);
-        verify(incomingDiscountsProcessor, times(1)).process(d2);
+        verify(incomingDiscountsProcessor, times(1)).process(dto);
     }
 }

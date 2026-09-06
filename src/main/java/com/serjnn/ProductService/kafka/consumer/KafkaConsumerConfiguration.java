@@ -69,9 +69,9 @@ public class KafkaConsumerConfiguration {
         ConcurrentKafkaListenerContainerFactory<String, DiscountChangesDto> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
-        factory.setBatchListener(true);
+        factory.setBatchListener(false);
         factory.setCommonErrorHandler(kafkaErrorHandler());
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
         return factory;
     }
 }
