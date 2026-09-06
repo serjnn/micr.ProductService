@@ -6,14 +6,17 @@ import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.MicrometerConsumerListener;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
@@ -58,19 +61,21 @@ public class KafkaConsumerConfiguration {
     }
 
     @Bean
-    public CommonErrorHandler kafkaErrorHandler() {
+    public CommonErrorHandler kafkaErrorHandler(@Qualifier("dltKafkaTemplate") KafkaTemplate<Object, Object> dltKafkaTemplate) {
         ExponentialBackOff backOff = new ExponentialBackOff(1000L, 2.0);
         backOff.setMaxElapsedTime(10000L);
-        return new DefaultErrorHandler(backOff);
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dltKafkaTemplate);
+        return new DefaultErrorHandler(recoverer, backOff);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, DiscountChangesDto> kafkaListenerContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, DiscountChangesDto> kafkaListenerContainerFactory(
+            @Qualifier("dltKafkaTemplate") KafkaTemplate<Object, Object> dltKafkaTemplate) {
         ConcurrentKafkaListenerContainerFactory<String, DiscountChangesDto> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         factory.setBatchListener(false);
-        factory.setCommonErrorHandler(kafkaErrorHandler());
+        factory.setCommonErrorHandler(kafkaErrorHandler(dltKafkaTemplate));
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
         return factory;
     }
