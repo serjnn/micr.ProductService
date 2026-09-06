@@ -98,6 +98,12 @@ public class ProductServiceIntegrationTest {
     @SpyBean
     private KafkaSender kafkaSender;
 
+    @SpyBean
+    private com.serjnn.ProductService.services.IncomingDiscountsProcessor incomingDiscountsProcessor;
+
+    @SpyBean(name = "dltKafkaTemplate")
+    private KafkaTemplate<Object, Object> dltKafkaTemplate;
+
     @Autowired
     private KafkaTemplate kafkaTemplate;
 
@@ -205,6 +211,39 @@ public class ProductServiceIntegrationTest {
             assertEquals(productId, notification.productId());
             assertEquals(999L, notification.clientId());
             assertEquals(20.0, notification.discount());
+        });
+    }
+
+    @Test
+    void shouldRoute4xxErrorDirectlyToDltWithoutRetries() throws Exception {
+        Long productId = 888L;
+        DiscountChangesDto discountChangesDto = new DiscountChangesDto(productId, 50.0, 10.0);
+
+        doThrow(org.springframework.web.client.HttpClientErrorException.create(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Product Not Found", null, null, null))
+                .when(incomingDiscountsProcessor).process(eq(discountChangesDto));
+
+        kafkaTemplate.send("discountChangesTopic", discountChangesDto);
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            verify(incomingDiscountsProcessor, times(1)).process(eq(discountChangesDto));
+            verify(dltKafkaTemplate, atLeastOnce()).send(org.mockito.ArgumentMatchers.any(org.apache.kafka.clients.producer.ProducerRecord.class));
+        });
+    }
+
+    @Test
+    void shouldRetryTransientExceptionAndRouteToDltOnExhaustion() throws Exception {
+        Long productId = 777L;
+        DiscountChangesDto discountChangesDto = new DiscountChangesDto(productId, 30.0, 10.0);
+
+        doThrow(new RuntimeException("Transient database connectivity timeout"))
+                .when(incomingDiscountsProcessor).process(eq(discountChangesDto));
+
+        kafkaTemplate.send("discountChangesTopic", discountChangesDto);
+
+        await().atMost(Duration.ofSeconds(25)).untilAsserted(() -> {
+            verify(incomingDiscountsProcessor, atLeast(2)).process(eq(discountChangesDto));
+            verify(dltKafkaTemplate, atLeastOnce()).send(org.mockito.ArgumentMatchers.any(org.apache.kafka.clients.producer.ProducerRecord.class));
         });
     }
 }
