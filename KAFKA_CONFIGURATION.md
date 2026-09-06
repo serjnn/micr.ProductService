@@ -53,13 +53,21 @@ flowchart LR
       ExponentialBackOff backOff = new ExponentialBackOff(1000L, 2.0);
       backOff.setMaxElapsedTime(10000L);
       DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dltKafkaTemplate);
-      return new DefaultErrorHandler(recoverer, backOff);
+      DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
+      errorHandler.addNotRetryableExceptions(
+              HttpClientErrorException.class, // 4xx client errors (400, 404, 422, etc.)
+              IllegalArgumentException.class  // Invalid payload arguments
+      );
+      return errorHandler;
   }
   ```
 
 ### How `DefaultErrorHandler` and `DeadLetterPublishingRecoverer` Work
 1. **Poison Pill Interception**: The consumer uses `ErrorHandlingDeserializer` wrapping `StringDeserializer` and `JsonDeserializer`. Malformed JSON or incompatible schemas are safely trapped and forwarded to the error handler rather than crashing the consumer thread.
-2. **Exponential Backoff Schedule**:
+2. **Non-Retryable Exceptions (0 Retries -> Immediate DLT)**:
+   - `HttpClientErrorException` (HTTP `4xx` Client Errors such as 400 Bad Request, 404 Not Found, 422 Unprocessable Entity) and `IllegalArgumentException` are marked as **non-retryable**.
+   - These bypass exponential backoff retries entirely and are routed **immediately** to the Dead Letter Topic, avoiding useless retry loops.
+3. **Exponential Backoff Schedule (for Transient / 5xx / Network Failures)**:
    - **Initial Interval (`initialInterval`)**: `1000 ms` ($1\text{ s}$)
    - **Multiplier (`multiplier`)**: `2.0`
    - **Maximum Elapsed Time (`maxElapsedTime`)**: `10000 ms` ($10\text{ s}$)
@@ -74,7 +82,7 @@ flowchart LR
 | **4 (Retry 3)** | Failed | $4000\text{ ms}$ ($4\text{ s}$) | $7000\text{ ms}$ ($7\text{ s}$) | $4000 \times 2.0 = 8000\text{ ms}$ ($8\text{ s}$) | **No** ($7\text{ s} + 8\text{ s} = 15\text{ s} > 10\text{ s}$) |
 | **Exhaustion / Recovery** | Recovered | — | $7000\text{ ms}$ | `DeadLetterPublishingRecoverer` | Routes to `.DLT` topic |
 
-> **Summary**: The listener executes **1 initial attempt + 3 retries = 4 total execution attempts** over approximately **7 seconds**. If still failing, `DeadLetterPublishingRecoverer` automatically publishes the message to `<topic>.DLT` for inspection/remediation.
+> **Summary**: Transient failures execute **1 initial attempt + 3 retries = 4 total execution attempts** over approximately **7 seconds** before DLT publishing. Deterministic failures (4xx / bad arguments) skip retries and publish directly to DLT.
 
 ---
 

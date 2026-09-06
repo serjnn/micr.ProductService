@@ -22,6 +22,8 @@ import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.util.backoff.ExponentialBackOff;
 
+import org.springframework.web.client.HttpClientErrorException;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -65,7 +67,12 @@ public class KafkaConsumerConfiguration {
         ExponentialBackOff backOff = new ExponentialBackOff(1000L, 2.0);
         backOff.setMaxElapsedTime(10000L);
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dltKafkaTemplate);
-        return new DefaultErrorHandler(recoverer, backOff);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
+        errorHandler.addNotRetryableExceptions(
+                HttpClientErrorException.class,
+                IllegalArgumentException.class
+        );
+        return errorHandler;
     }
 
     @Bean
