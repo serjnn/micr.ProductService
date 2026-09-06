@@ -14,5 +14,6 @@ public class AppKafkaProperties {
     public static class Topic {
         private String discountNotifications;
         private int discountNotificationsPartitions;
+        private String discountChanges;
     }
 }

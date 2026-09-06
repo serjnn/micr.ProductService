@@ -16,8 +16,8 @@ public class KafkaConfigProperties {
     public static class Consumer {
         private String groupId;
         private String autoOffsetReset;
-        private String enableAutoCommit;
-        private String autoCommitInterval;
+        private Boolean enableAutoCommit;
+        private Integer autoCommitInterval;
         private String valueDefaultType;
         private String trustedPackages;
         private Integer maxPollRecords;
