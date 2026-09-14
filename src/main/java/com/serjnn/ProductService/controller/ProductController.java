@@ -51,7 +51,7 @@ public class ProductController {
     })
     public Product getById(
             @Parameter(description = "Product ID", example = "1")
-            @PathVariable("id") @Positive(message = "Product ID must be positive") Long id) {
+            @PathVariable("id") @Positive Long id) {
         log.info("Received request to get product by ID: {}", id);
         return productService.getByIdWithDiscount(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
@@ -123,7 +123,7 @@ public class ProductController {
     })
     public Product updateProduct(
             @Parameter(description = "Product ID to update", example = "1")
-            @PathVariable("id") @Positive(message = "Product ID must be positive") Long id,
+            @PathVariable("id") @Positive Long id,
             @Valid @RequestBody Product product) {
         log.info("Received request to update product ID: {}", id);
         return productService.update(id, product);
@@ -140,7 +140,7 @@ public class ProductController {
     })
     public void deleteProduct(
             @Parameter(description = "Product ID to delete", example = "1")
-            @PathVariable("id") @Positive(message = "Product ID must be positive") Long id) {
+            @PathVariable("id") @Positive Long id) {
         log.info("Received request to delete product ID: {}", id);
         productService.delete(id);
     }
@@ -157,9 +157,9 @@ public class ProductController {
     })
     public void subscribe(
             @Parameter(description = "Product ID", example = "1")
-            @PathVariable("productId") @Positive(message = "Product ID must be positive") Long productId,
+            @PathVariable("productId") @Positive Long productId,
             @Parameter(description = "Client ID", example = "100")
-            @PathVariable("clientId") @Positive(message = "Client ID must be positive") Long clientId) {
+            @PathVariable("clientId") @Positive Long clientId) {
         log.info("Received subscription request: Client {} for Product {}", clientId, productId);
         productService.subscribe(clientId, productId);
     }
@@ -175,9 +175,9 @@ public class ProductController {
     })
     public void unsubscribe(
             @Parameter(description = "Product ID", example = "1")
-            @PathVariable("productId") @Positive(message = "Product ID must be positive") Long productId,
+            @PathVariable("productId") @Positive Long productId,
             @Parameter(description = "Client ID", example = "100")
-            @PathVariable("clientId") @Positive(message = "Client ID must be positive") Long clientId) {
+            @PathVariable("clientId") @Positive Long clientId) {
         log.info("Received unsubscribe request: Client {} for Product {}", clientId, productId);
         productService.unsubscribe(clientId, productId);
     }
@@ -192,7 +192,7 @@ public class ProductController {
     })
     public Slice<Long> getProductSubscribers(
             @Parameter(description = "Product ID", example = "1")
-            @PathVariable("productId") @Positive(message = "Product ID must be positive") Long productId,
+            @PathVariable("productId") @Positive Long productId,
             Pageable pageable) {
         log.info("Received request to get subscribers for product {}", productId);
         return productService.getSubscriberClientIds(productId, pageable);
@@ -207,7 +207,7 @@ public class ProductController {
     })
     public Slice<Long> getClientSubscriptions(
             @Parameter(description = "Client ID", example = "100")
-            @PathVariable("clientId") @Positive(message = "Client ID must be positive") Long clientId,
+            @PathVariable("clientId") @Positive Long clientId,
             Pageable pageable) {
         log.info("Received request to get subscriptions for client {}", clientId);
         return productService.getSubscribedProductIds(clientId, pageable);

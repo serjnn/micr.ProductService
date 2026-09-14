@@ -6,13 +6,12 @@ import jakarta.validation.constraints.Positive;
 import java.io.Serializable;
 
 public record DiscountChangesDto(
-        @NotNull(message = "Product ID is required")
-        @Positive(message = "Product ID must be positive")
+        @NotNull
+        @Positive
         Long productId,
-        @NotNull(message = "New discount is required")
-        @DecimalMin(value = "0.0", message = "New discount cannot be negative")
+        @NotNull
+        @DecimalMin("0.0")
         Double newDiscount,
-        @DecimalMin(value = "0.0", message = "Previous discount cannot be negative")
+        @DecimalMin("0.0")
         Double prevDiscount
-) implements Serializable {
-}
+) implements Serializable {}

@@ -10,15 +10,14 @@ import java.math.BigDecimal;
 
 public record Product(
         Long id,
-        @NotBlank(message = "Product name must not be blank")
-        @Size(max = 255, message = "Product name must not exceed 255 characters")
+        @NotBlank
+        @Size(max = 255)
         String name,
-        @Size(max = 2000, message = "Product description must not exceed 2000 characters")
+        @Size(max = 2000)
         String description,
-        @NotNull(message = "Product price is required")
-        @DecimalMin(value = "0.01", message = "Product price must be greater than 0")
+        @NotNull
+        @DecimalMin("0.01")
         BigDecimal price,
-        @NotNull(message = "Product category is required")
+        @NotNull
         Category category
-) {
-}
+) {}
