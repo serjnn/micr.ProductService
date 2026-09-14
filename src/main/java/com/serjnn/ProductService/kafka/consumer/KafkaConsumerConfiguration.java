@@ -37,19 +37,19 @@ public class KafkaConsumerConfiguration {
     @Bean
     public ConsumerFactory<String, DiscountChangesDto> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.getBootstrapServers());
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaConfigProperties.getConsumer().getGroupId());
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.bootstrapServers());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, kafkaConfigProperties.consumer().groupId());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, kafkaConfigProperties.getConsumer().getEnableAutoCommit());
-        props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, kafkaConfigProperties.getConsumer().getAutoCommitInterval());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, kafkaConfigProperties.getConsumer().getAutoOffsetReset());
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, kafkaConfigProperties.getConsumer().getMaxPollRecords());
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, kafkaConfigProperties.consumer().enableAutoCommit());
+        props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, kafkaConfigProperties.consumer().autoCommitInterval());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, kafkaConfigProperties.consumer().autoOffsetReset());
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, kafkaConfigProperties.consumer().maxPollRecords());
 
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, kafkaConfigProperties.getConsumer().getTrustedPackages());
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, kafkaConfigProperties.getConsumer().getValueDefaultType());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, kafkaConfigProperties.consumer().trustedPackages());
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, kafkaConfigProperties.consumer().valueDefaultType());
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
 
         JsonDeserializer<DiscountChangesDto> jsonDeserializer = new JsonDeserializer<>(DiscountChangesDto.class, false);

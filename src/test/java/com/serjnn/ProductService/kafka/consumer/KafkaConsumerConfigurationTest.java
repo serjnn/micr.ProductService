@@ -48,15 +48,17 @@ class KafkaConsumerConfigurationTest {
 
     @BeforeEach
     void setUp() {
-        kafkaConfigProperties = new KafkaConfigProperties();
-        kafkaConfigProperties.setBootstrapServers("localhost:9092");
-        kafkaConfigProperties.getConsumer().setGroupId("test-group");
-        kafkaConfigProperties.getConsumer().setAutoOffsetReset("earliest");
-        kafkaConfigProperties.getConsumer().setEnableAutoCommit(false);
-        kafkaConfigProperties.getConsumer().setAutoCommitInterval(100);
-        kafkaConfigProperties.getConsumer().setMaxPollRecords(50);
-        kafkaConfigProperties.getConsumer().setTrustedPackages("*");
-        kafkaConfigProperties.getConsumer().setValueDefaultType("com.serjnn.ProductService.dtos.DiscountChangesDto");
+        KafkaConfigProperties.Consumer consumer = new KafkaConfigProperties.Consumer(
+                "test-group",
+                "earliest",
+                false,
+                100,
+                "com.serjnn.ProductService.dtos.DiscountChangesDto",
+                "*",
+                50
+        );
+        KafkaConfigProperties.Producer producer = new KafkaConfigProperties.Producer("all");
+        kafkaConfigProperties = new KafkaConfigProperties("localhost:9092", consumer, producer);
 
         meterRegistry = new SimpleMeterRegistry();
         configuration = new KafkaConsumerConfiguration(kafkaConfigProperties, meterRegistry);

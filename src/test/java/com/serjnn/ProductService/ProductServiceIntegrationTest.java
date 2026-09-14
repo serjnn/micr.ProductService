@@ -107,9 +107,6 @@ public class ProductServiceIntegrationTest {
     @Autowired
     private KafkaTemplate kafkaTemplate;
 
-    @Value("${app.services.discount-url}")
-    private String discountUrl;
-
     @BeforeEach
     void setup() {
         jdbcTemplate.execute("TRUNCATE TABLE subscribers RESTART IDENTITY CASCADE");

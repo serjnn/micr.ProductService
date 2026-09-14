@@ -1,10 +1,10 @@
 package com.serjnn.ProductService.redis;
 
+import com.serjnn.ProductService.config.AppServicesProperties;
 import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -17,12 +17,11 @@ import java.util.Optional;
 @Component
 public class DiscountCacheManager {
     private RestClient restClient;
+    private final AppServicesProperties appServicesProperties;
 
-    @Value("${app.services.discount-url}")
-    private String discountUrl;
-
-    public DiscountCacheManager(RestClient.Builder restClientBuilder) {
+    public DiscountCacheManager(RestClient.Builder restClientBuilder, AppServicesProperties appServicesProperties) {
         this.restClient = restClientBuilder.build();
+        this.appServicesProperties = appServicesProperties;
     }
 
     public void setRestClient(RestClient restClient) {
@@ -35,7 +34,7 @@ public class DiscountCacheManager {
     public Optional<CacheableDiscountDto> getDiscountByProductId(Long productId) {
         log.info("Cache miss for product {} discount. Fetching from external service.", productId);
         CacheableDiscountDto response = restClient.get()
-                .uri(discountUrl + productId)
+                .uri(appServicesProperties.discountUrl() + productId)
                 .retrieve()
                 .body(CacheableDiscountDto.class);
 

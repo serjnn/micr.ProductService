@@ -1,5 +1,6 @@
 package com.serjnn.ProductService.redis;
 
+import com.serjnn.ProductService.config.AppServicesProperties;
 import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,7 +10,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestClient;
 
-import java.lang.reflect.Field;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,11 +38,8 @@ class DiscountCacheManagerTest {
         RestClient.Builder builder = mock(RestClient.Builder.class);
         when(builder.build()).thenReturn(restClient);
 
-        discountCacheManager = new DiscountCacheManager(builder);
-
-        Field field = DiscountCacheManager.class.getDeclaredField("discountUrl");
-        field.setAccessible(true);
-        field.set(discountCacheManager, "http://discount/api/v1/discounts/");
+        AppServicesProperties appServicesProperties = new AppServicesProperties("http://discount/api/v1/discounts/");
+        discountCacheManager = new DiscountCacheManager(builder, appServicesProperties);
     }
 
     @Test

@@ -37,6 +37,7 @@ class SubscribersNotifierTest {
     private KafkaSender kafkaSender;
 
     private NotifierProperties notifierProperties;
+    private com.serjnn.ProductService.config.AppKafkaProperties appKafkaProperties;
 
     // Use a direct executor so that the task runs synchronously in the test thread
     private final Executor directExecutor = Runnable::run;
@@ -45,26 +46,18 @@ class SubscribersNotifierTest {
 
     @BeforeEach
     void setUp() {
-        notifierProperties = new NotifierProperties();
-        notifierProperties.setPageSize(2); // small page size for testing pagination
+        notifierProperties = new NotifierProperties(2, 10, 50, 10000);
+        appKafkaProperties = new com.serjnn.ProductService.config.AppKafkaProperties(
+                new com.serjnn.ProductService.config.AppKafkaProperties.Topic("test-discount-notifications", 3, "changes")
+        );
 
         subscribersNotifier = new SubscribersNotifier(
                 subscribersRepository,
                 kafkaSender,
                 notifierProperties,
+                appKafkaProperties,
                 directExecutor
         );
-
-        // Inject the property using reflection or by relying on spring context, but since it's a unit test,
-        // we can set fields manually. Wait, discountNotifTopic is injected via @Value.
-        // Let's use reflection to set the field discountNotifTopic.
-        try {
-            java.lang.reflect.Field field = SubscribersNotifier.class.getDeclaredField("discountNotifTopic");
-            field.setAccessible(true);
-            field.set(subscribersNotifier, "test-discount-notifications");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Test

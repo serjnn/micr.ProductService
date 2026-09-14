@@ -31,18 +31,18 @@ public class KafkaProducerConfiguration {
 
     @Bean
     public NewTopic discountNotifTopic() {
-        return TopicBuilder.name(appKafkaProperties.getTopic().getDiscountNotifications())
-                .partitions(appKafkaProperties.getTopic().getDiscountNotificationsPartitions())
+        return TopicBuilder.name(appKafkaProperties.topic().discountNotifications())
+                .partitions(appKafkaProperties.topic().discountNotificationsPartitions())
                 .build();
     }
 
     @Bean
     public ProducerFactory<String, DiscountNotification> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.getBootstrapServers());
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.bootstrapServers());
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        configProps.put(ProducerConfig.ACKS_CONFIG, kafkaConfigProperties.getProducer().getAcks());
+        configProps.put(ProducerConfig.ACKS_CONFIG, kafkaConfigProperties.producer().acks());
         configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         configProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
         configProps.put(ProducerConfig.LINGER_MS_CONFIG, 10);
@@ -62,10 +62,10 @@ public class KafkaProducerConfiguration {
     @Bean
     public KafkaTemplate<Object, Object> dltKafkaTemplate() {
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.getBootstrapServers());
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConfigProperties.bootstrapServers());
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        configProps.put(ProducerConfig.ACKS_CONFIG, kafkaConfigProperties.getProducer().getAcks());
+        configProps.put(ProducerConfig.ACKS_CONFIG, kafkaConfigProperties.producer().acks());
         configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         configProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
 

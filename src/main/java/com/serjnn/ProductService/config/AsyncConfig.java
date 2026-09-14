@@ -17,9 +17,9 @@ public class AsyncConfig {
     @Bean(name = "notifierTaskExecutor")
     public Executor notifierTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(notifierProperties.getCorePoolSize());
-        executor.setMaxPoolSize(notifierProperties.getMaxPoolSize());
-        executor.setQueueCapacity(notifierProperties.getQueueCapacity());
+        executor.setCorePoolSize(notifierProperties.corePoolSize());
+        executor.setMaxPoolSize(notifierProperties.maxPoolSize());
+        executor.setQueueCapacity(notifierProperties.queueCapacity());
         executor.setThreadNamePrefix("notifier-async-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);

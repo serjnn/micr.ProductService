@@ -1,5 +1,6 @@
 package com.serjnn.ProductService.services;
 
+import com.serjnn.ProductService.config.AppKafkaProperties;
 import com.serjnn.ProductService.config.NotifierProperties;
 import com.serjnn.ProductService.dtos.DiscountNotification;
 import com.serjnn.ProductService.dtos.DiscountChangesDto;
@@ -7,7 +8,6 @@ import com.serjnn.ProductService.kafka.producer.KafkaSender;
 import com.serjnn.ProductService.repo.SubscribersRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,18 +24,18 @@ public class SubscribersNotifier {
     private final SubscribersRepository subscribersRepository;
     private final KafkaSender kafkaSender;
     private final NotifierProperties notifierProperties;
+    private final AppKafkaProperties appKafkaProperties;
     private final Executor notifierTaskExecutor;
-
-    @Value("${app.kafka.topic.discount-notifications}")
-    private String discountNotifTopic;
 
     public SubscribersNotifier(SubscribersRepository subscribersRepository,
                                KafkaSender kafkaSender,
                                NotifierProperties notifierProperties,
+                               AppKafkaProperties appKafkaProperties,
                                @Qualifier("notifierTaskExecutor") Executor notifierTaskExecutor) {
         this.subscribersRepository = subscribersRepository;
         this.kafkaSender = kafkaSender;
         this.notifierProperties = notifierProperties;
+        this.appKafkaProperties = appKafkaProperties;
         this.notifierTaskExecutor = notifierTaskExecutor;
     }
 
@@ -43,7 +43,7 @@ public class SubscribersNotifier {
         notifierTaskExecutor.execute(() -> {
             log.info("Notifying subscribers: {}", discountChangesDto);
             Long productId = discountChangesDto.productId();
-            int pageSize = notifierProperties.getPageSize();
+            int pageSize = notifierProperties.pageSize();
             Pageable pageable = PageRequest.of(0, pageSize);
             Slice<Long> clientIdsSlice;
 
@@ -56,7 +56,7 @@ public class SubscribersNotifier {
                                     clientId,
                                     discountChangesDto.newDiscount()
                             );
-                            return kafkaSender.sendDiscountNotification(discountNotifTopic, notification);
+                            return kafkaSender.sendDiscountNotification(appKafkaProperties.topic().discountNotifications(), notification);
                         })
                         .toList();
 
