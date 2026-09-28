@@ -51,6 +51,16 @@ app:
     core-pool-size: ${NOTIFIER_CORE_POOL_SIZE:10}
     max-pool-size: ${NOTIFIER_MAX_POOL_SIZE:50}
     queue-capacity: ${NOTIFIER_QUEUE_CAPACITY:10000}
+  external-task:
+    dispatch-delay-ms: ${EXTERNAL_TASK_DISPATCH_DELAY_MS:2000}
+    reconcile-delay-ms: ${EXTERNAL_TASK_RECONCILE_DELAY_MS:3000}
+    batch-size: ${EXTERNAL_TASK_BATCH_SIZE:10}
+    default-max-retries: ${EXTERNAL_TASK_DEFAULT_MAX_RETRIES:5}
+    audit-delay-seconds: ${EXTERNAL_TASK_AUDIT_DELAY_SECONDS:5}
+    base-backoff-seconds: ${EXTERNAL_TASK_BASE_BACKOFF_SECONDS:2}
+    service-url: ${EXTERNAL_SERVICE_URL:http://supplier/api/v1/products}
+    connect-timeout-ms: ${EXTERNAL_TASK_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${EXTERNAL_TASK_READ_TIMEOUT_MS:3000}
 
 springdoc:
   api-docs:
