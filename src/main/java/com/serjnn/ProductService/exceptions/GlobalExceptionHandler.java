@@ -42,6 +42,22 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(com.serjnn.ProductService.externaltask.exception.ExternalTaskNotFoundException.class)
+    public ProblemDetail handleExternalTaskNotFound(com.serjnn.ProductService.externaltask.exception.ExternalTaskNotFoundException ex) {
+        log.warn("External task not found: {}", ex.getMessage());
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problemDetail.setTitle("External Task Not Found");
+        problemDetail.setType(URI.create("https://api.products.serjnn.com/errors/not-found"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        if (ex.getBusinessKey() != null) {
+            problemDetail.setProperty("businessKey", ex.getBusinessKey());
+        }
+        if (ex.getId() != null) {
+            problemDetail.setProperty("taskId", ex.getId());
+        }
+        return problemDetail;
+    }
+
     @ExceptionHandler(DuplicateSubscriptionException.class)
     public ProblemDetail handleDuplicateSubscription(DuplicateSubscriptionException ex) {
         log.warn("Duplicate subscription attempt: {}", ex.getMessage());
