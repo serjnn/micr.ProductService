@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.time.Instant;
@@ -44,7 +46,7 @@ class GetReconciliationWorkerTest {
     @Test
     @DisplayName("Should do nothing when no FAILED_CHECK_NEEDED tasks exist")
     void shouldDoNothingWhenNoFailedCheckNeededTasks() {
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(ExternalTaskState.IN_FLIGHT_AUDIT), eq(10)))
                 .thenReturn(Collections.emptyList());
 
         worker.reconcileUncertainTasks();
@@ -57,10 +59,10 @@ class GetReconciliationWorkerTest {
     @DisplayName("Should mark SUCCEEDED when audit GET returns existing record on remote server")
     void shouldMarkSucceededWhenRemoteRecordFound() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(1L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.FAILED_CHECK_NEEDED,
+        ExternalTask task = new ExternalTask(1L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_AUDIT,
                 "{\"productId\":100}", null, 0, 5, Instant.now(), "Timeout", Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(ExternalTaskState.IN_FLIGHT_AUDIT), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.checkTaskStatus(businessKey))
                 .thenReturn(Optional.of(new ExternalServiceResponse("EXT-REMOTE-123", "SUCCESS", "Found")));
@@ -74,10 +76,10 @@ class GetReconciliationWorkerTest {
     @DisplayName("Should reset to PENDING with exponential backoff when audit GET returns 404 (safe to retry)")
     void shouldResetToPendingWhenRemoteRecordNotFound() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(2L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.FAILED_CHECK_NEEDED,
+        ExternalTask task = new ExternalTask(2L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_AUDIT,
                 "{\"productId\":101}", null, 1, 5, Instant.now(), "Timeout", Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(ExternalTaskState.IN_FLIGHT_AUDIT), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.checkTaskStatus(businessKey))
                 .thenReturn(Optional.empty()); // 404 Not Found
@@ -91,10 +93,10 @@ class GetReconciliationWorkerTest {
     @DisplayName("Should mark FATAL_FAILED when retries are exhausted and record still not found")
     void shouldMarkFatalFailedWhenRetriesExhausted() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(3L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.FAILED_CHECK_NEEDED,
+        ExternalTask task = new ExternalTask(3L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_AUDIT,
                 "{\"productId\":102}", null, 5, 5, Instant.now(), "Timeout", Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(ExternalTaskState.IN_FLIGHT_AUDIT), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.checkTaskStatus(businessKey))
                 .thenReturn(Optional.empty());
@@ -108,10 +110,10 @@ class GetReconciliationWorkerTest {
     @DisplayName("Should keep in FAILED_CHECK_NEEDED and reschedule when audit GET encounters transient error")
     void shouldKeepFailedCheckNeededOnAuditNetworkError() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(4L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.FAILED_CHECK_NEEDED,
+        ExternalTask task = new ExternalTask(4L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_AUDIT,
                 "{\"productId\":103}", null, 0, 5, Instant.now(), "Timeout", Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(ExternalTaskState.IN_FLIGHT_AUDIT), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.checkTaskStatus(businessKey))
                 .thenThrow(new ResourceAccessException("Audit timeout"));
@@ -119,5 +121,22 @@ class GetReconciliationWorkerTest {
         worker.reconcileUncertainTasks();
 
         verify(taskRepository).markAsFailedCheckNeeded(eq(4L), contains("Audit failed: Audit timeout"), any(Instant.class));
+    }
+
+    @Test
+    @DisplayName("Should mark FATAL_FAILED on permanent 401 Unauthorized during audit")
+    void shouldMarkFatalFailedOn401UnauthorizedAudit() {
+        UUID businessKey = UUID.randomUUID();
+        ExternalTask task = new ExternalTask(5L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_AUDIT,
+                "{\"productId\":105}", null, 0, 5, Instant.now(), "Timeout", Instant.now(), Instant.now());
+
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.FAILED_CHECK_NEEDED), eq(ExternalTaskState.IN_FLIGHT_AUDIT), eq(10)))
+                .thenReturn(List.of(task));
+        when(externalClient.checkTaskStatus(businessKey))
+                .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+
+        worker.reconcileUncertainTasks();
+
+        verify(taskRepository).markAsFatalFailed(eq(5L), contains("Non-recoverable audit client error"));
     }
 }

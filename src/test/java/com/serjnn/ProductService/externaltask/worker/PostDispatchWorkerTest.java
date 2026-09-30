@@ -46,7 +46,7 @@ class PostDispatchWorkerTest {
     @Test
     @DisplayName("Should do nothing when no pending tasks exist")
     void shouldDoNothingWhenNoPendingTasks() {
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.PENDING), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.PENDING), eq(ExternalTaskState.IN_FLIGHT_POST), eq(10)))
                 .thenReturn(Collections.emptyList());
 
         worker.dispatchPendingTasks();
@@ -59,10 +59,10 @@ class PostDispatchWorkerTest {
     @DisplayName("Should dispatch task and mark SUCCEEDED on successful POST response")
     void shouldDispatchAndMarkSucceeded() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(1L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.PENDING,
+        ExternalTask task = new ExternalTask(1L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_POST,
                 "{\"productId\":100}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.PENDING), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.PENDING), eq(ExternalTaskState.IN_FLIGHT_POST), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.postTask(businessKey, "SUPPLIER_SYNC", "{\"productId\":100}"))
                 .thenReturn(new ExternalServiceResponse("EXT-999", "CONFIRMED", "OK"));
@@ -76,10 +76,10 @@ class PostDispatchWorkerTest {
     @DisplayName("Should mark FAILED_CHECK_NEEDED on ResourceAccessException (network timeout)")
     void shouldMarkFailedCheckNeededOnTimeout() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(2L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.PENDING,
+        ExternalTask task = new ExternalTask(2L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_POST,
                 "{\"productId\":101}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.PENDING), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.PENDING), eq(ExternalTaskState.IN_FLIGHT_POST), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.postTask(businessKey, "SUPPLIER_SYNC", "{\"productId\":101}"))
                 .thenThrow(new ResourceAccessException("Connection timed out"));
@@ -93,10 +93,10 @@ class PostDispatchWorkerTest {
     @DisplayName("Should mark FAILED_CHECK_NEEDED on 504 Gateway Timeout / 5xx Server Error")
     void shouldMarkFailedCheckNeededOn5xx() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(3L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.PENDING,
+        ExternalTask task = new ExternalTask(3L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_POST,
                 "{\"productId\":102}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.PENDING), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.PENDING), eq(ExternalTaskState.IN_FLIGHT_POST), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.postTask(businessKey, "SUPPLIER_SYNC", "{\"productId\":102}"))
                 .thenThrow(new HttpServerErrorException(HttpStatus.GATEWAY_TIMEOUT, "Gateway Timeout"));
@@ -110,10 +110,10 @@ class PostDispatchWorkerTest {
     @DisplayName("Should mark FATAL_FAILED on 400 Bad Request")
     void shouldMarkFatalFailedOn400BadRequest() {
         UUID businessKey = UUID.randomUUID();
-        ExternalTask task = new ExternalTask(4L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.PENDING,
+        ExternalTask task = new ExternalTask(4L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_POST,
                 "{\"invalid\":true}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
 
-        when(taskRepository.lockBatchForProcessing(eq(ExternalTaskState.PENDING), eq(10)))
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.PENDING), eq(ExternalTaskState.IN_FLIGHT_POST), eq(10)))
                 .thenReturn(List.of(task));
         when(externalClient.postTask(businessKey, "SUPPLIER_SYNC", "{\"invalid\":true}"))
                 .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST, "Invalid format"));
@@ -121,5 +121,39 @@ class PostDispatchWorkerTest {
         worker.dispatchPendingTasks();
 
         verify(taskRepository).markAsFatalFailed(eq(4L), contains("400"));
+    }
+
+    @Test
+    @DisplayName("Should retry with exponential backoff on 429 Too Many Requests")
+    void shouldRetryOn429TooManyRequests() {
+        UUID businessKey = UUID.randomUUID();
+        ExternalTask task = new ExternalTask(5L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_POST,
+                "{\"productId\":105}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
+
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.PENDING), eq(ExternalTaskState.IN_FLIGHT_POST), eq(10)))
+                .thenReturn(List.of(task));
+        when(externalClient.postTask(businessKey, "SUPPLIER_SYNC", "{\"productId\":105}"))
+                .thenThrow(new HttpClientErrorException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded"));
+
+        worker.dispatchPendingTasks();
+
+        verify(taskRepository).markAsPendingForRetry(eq(5L), eq(1), any(Instant.class));
+    }
+
+    @Test
+    @DisplayName("Should move to FAILED_CHECK_NEEDED on 409 Conflict")
+    void shouldMoveToFailedCheckNeededOn409Conflict() {
+        UUID businessKey = UUID.randomUUID();
+        ExternalTask task = new ExternalTask(6L, businessKey, "SUPPLIER_SYNC", ExternalTaskState.IN_FLIGHT_POST,
+                "{\"productId\":106}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
+
+        when(taskRepository.claimBatchForProcessing(eq(ExternalTaskState.PENDING), eq(ExternalTaskState.IN_FLIGHT_POST), eq(10)))
+                .thenReturn(List.of(task));
+        when(externalClient.postTask(businessKey, "SUPPLIER_SYNC", "{\"productId\":106}"))
+                .thenThrow(new HttpClientErrorException(HttpStatus.CONFLICT, "Duplicate record"));
+
+        worker.dispatchPendingTasks();
+
+        verify(taskRepository).markAsFailedCheckNeeded(eq(6L), contains("Conflict (409)"), any(Instant.class));
     }
 }

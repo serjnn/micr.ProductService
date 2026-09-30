@@ -121,9 +121,6 @@ public class ExternalTaskIntegrationTest {
         postDispatchWorker.dispatchPendingTasks();
 
         // Verify task transitioned to SUCCEEDED
-        List<ExternalTask> allTasks = taskRepository.lockBatchForProcessing(ExternalTaskState.SUCCEEDED, 10);
-        // Note: lockBatchForProcessing with SUCCEEDED won't match index WHERE state in (PENDING, FAILED_CHECK_NEEDED)
-        // Let's query by ID directly:
         ExternalTask savedTask = taskRepository.findById(1L).orElseThrow();
         assertEquals(ExternalTaskState.SUCCEEDED, savedTask.state());
         assertEquals("SUPPLIER-REF-999", savedTask.externalResourceId());
@@ -239,6 +236,9 @@ public class ExternalTaskIntegrationTest {
         assertTrue(finalState.lastError().contains("Exceeded max retries"));
     }
 
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     @Test
     @DisplayName("Scenario 6: SKIP LOCKED concurrency test")
     void shouldSkipLockedRowsConcurrently() {
@@ -248,10 +248,24 @@ public class ExternalTaskIntegrationTest {
         taskRepository.save(ExternalTask.newPendingTask(k1, "SYNC", "{}", 3));
         taskRepository.save(ExternalTask.newPendingTask(k2, "SYNC", "{}", 3));
 
-        List<ExternalTask> batch1 = taskRepository.lockBatchForProcessing(ExternalTaskState.PENDING, 1);
-        assertEquals(1, batch1.size());
+        org.springframework.transaction.support.TransactionTemplate tt =
+                new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        tt.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
-        List<ExternalTask> batch2 = taskRepository.lockBatchForProcessing(ExternalTaskState.PENDING, 10);
-        assertEquals(2, batch2.size());
+        tt.execute(status1 -> {
+            // Tx 1 locks 1 row
+            List<ExternalTask> batch1 = taskRepository.lockBatchForProcessing(ExternalTaskState.PENDING, 1);
+            assertEquals(1, batch1.size());
+
+            // Tx 2 on separate transaction skips locked row
+            tt.execute(status2 -> {
+                List<ExternalTask> batch2 = taskRepository.lockBatchForProcessing(ExternalTaskState.PENDING, 10);
+                assertEquals(1, batch2.size());
+                assertNotEquals(batch1.get(0).id(), batch2.get(0).id());
+                return null;
+            });
+
+            return null;
+        });
     }
 }

@@ -18,8 +18,5 @@ CREATE TABLE IF NOT EXISTS external_task_state (
 -- Index for concurrent polling with SKIP LOCKED
 CREATE INDEX IF NOT EXISTS idx_task_state_retry
 ON external_task_state (state, next_retry_at)
-WHERE state IN ('PENDING', 'FAILED_CHECK_NEEDED');
+WHERE state IN ('PENDING', 'FAILED_CHECK_NEEDED', 'IN_FLIGHT_POST', 'IN_FLIGHT_AUDIT');
 
--- Index for lookup by business key
-CREATE INDEX IF NOT EXISTS idx_task_business_key
-ON external_task_state (business_key);

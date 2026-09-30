@@ -41,6 +41,50 @@ class ExternalTaskRepositoryTest {
     }
 
     @Test
+    @DisplayName("Should save task and return generated ID using RETURNING id query")
+    void shouldSaveTask() {
+        UUID businessKey = UUID.randomUUID();
+        ExternalTask task = ExternalTask.newPendingTask(businessKey, "SYNC", "{}", 5);
+
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(42L);
+
+        Long savedId = taskRepository.save(task);
+
+        assertEquals(42L, savedId);
+        verify(jdbcTemplate).queryForObject(contains("RETURNING id"), eq(Long.class), eq(businessKey), eq("SYNC"), eq("PENDING"), eq("{}"), isNull(), eq(0), eq(5), any(Timestamp.class), isNull(), any(Timestamp.class), any(Timestamp.class));
+    }
+
+    @Test
+    @DisplayName("Should atomically claim batch for processing using CTE")
+    void shouldClaimBatchForProcessing() {
+        UUID businessKey = UUID.randomUUID();
+        ExternalTask task = new ExternalTask(1L, businessKey, "SYNC", ExternalTaskState.IN_FLIGHT_POST,
+                "{}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
+
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq("PENDING"), eq(10), eq("IN_FLIGHT_POST")))
+                .thenReturn(List.of(task));
+
+        List<ExternalTask> result = taskRepository.claimBatchForProcessing(ExternalTaskState.PENDING, ExternalTaskState.IN_FLIGHT_POST, 10);
+
+        assertEquals(1, result.size());
+        assertEquals(ExternalTaskState.IN_FLIGHT_POST, result.get(0).state());
+        verify(jdbcTemplate).query(contains("FOR UPDATE SKIP LOCKED"), any(RowMapper.class), eq("PENDING"), eq(10), eq("IN_FLIGHT_POST"));
+    }
+
+    @Test
+    @DisplayName("Should recover stale in-flight tasks")
+    void shouldRecoverStaleInFlightTasks() {
+        when(jdbcTemplate.update(anyString(), any(Timestamp.class)))
+                .thenReturn(3);
+
+        int recovered = taskRepository.recoverStaleInFlightTasks(java.time.Duration.ofMinutes(5));
+
+        assertEquals(3, recovered);
+        verify(jdbcTemplate).update(contains("WHERE state IN ('IN_FLIGHT_POST', 'IN_FLIGHT_AUDIT')"), any(Timestamp.class));
+    }
+
+    @Test
     @DisplayName("Should lock batch for processing using SKIP LOCKED query")
     void shouldLockBatchForProcessing() {
         UUID businessKey = UUID.randomUUID();

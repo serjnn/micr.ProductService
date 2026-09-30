@@ -17,7 +17,7 @@ import java.util.UUID;
 @Component
 public class ExternalServiceClient {
 
-    private RestClient restClient;
+    private final RestClient restClient;
     private final ExternalTaskProperties properties;
 
     public ExternalServiceClient(@Qualifier("externalTaskRestClient") RestClient restClient,
@@ -26,14 +26,18 @@ public class ExternalServiceClient {
         this.properties = properties;
     }
 
-    public void setRestClient(RestClient restClient) {
-        this.restClient = restClient;
+    private String getNormalizedBaseUrl() {
+        String url = properties.serviceUrl();
+        if (url == null) {
+            return "";
+        }
+        return url.replaceAll("/+$", "");
     }
 
     public ExternalServiceResponse postTask(UUID businessKey, String taskType, String payload) {
         log.info("Sending POST for external task: businessKey={}, taskType={}", businessKey, taskType);
         return restClient.post()
-                .uri(properties.serviceUrl())
+                .uri(getNormalizedBaseUrl())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new ExternalServiceRequest(businessKey, taskType, payload))
                 .retrieve()
@@ -44,7 +48,7 @@ public class ExternalServiceClient {
         log.info("Sending GET audit inquiry for external task: businessKey={}", businessKey);
         try {
             ExternalServiceResponse response = restClient.get()
-                    .uri(properties.serviceUrl() + "/by-reference/{businessKey}", businessKey)
+                    .uri(getNormalizedBaseUrl() + "/by-reference/{businessKey}", businessKey)
                     .retrieve()
                     .body(ExternalServiceResponse.class);
             return Optional.ofNullable(response);
