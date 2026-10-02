@@ -61,6 +61,24 @@ class ExternalTaskServiceTest {
     }
 
     @Test
+    @DisplayName("Should generate UUIDv7 for businessKey when submitting task")
+    void shouldGenerateUUIDv7ForBusinessKey() {
+        CreateExternalTaskRequest request = new CreateExternalTaskRequest("SUPPLIER_SYNC", "{\"sku\":\"ABC\"}", null);
+        org.mockito.ArgumentCaptor<ExternalTask> captor = org.mockito.ArgumentCaptor.forClass(ExternalTask.class);
+
+        when(taskRepository.save(captor.capture())).thenReturn(1L);
+        ExternalTask savedTask = new ExternalTask(1L, UUID.randomUUID(), "SUPPLIER_SYNC", ExternalTaskState.PENDING,
+                "{\"sku\":\"ABC\"}", null, 0, 5, Instant.now(), null, Instant.now(), Instant.now());
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(savedTask));
+
+        taskService.submitTask(request);
+
+        ExternalTask captured = captor.getValue();
+        assertNotNull(captured.businessKey());
+        assertEquals(7, captured.businessKey().version(), "Generated business key should be UUID version 7");
+    }
+
+    @Test
     @DisplayName("Should get task by business key")
     void shouldGetTaskByBusinessKey() {
         UUID businessKey = UUID.randomUUID();

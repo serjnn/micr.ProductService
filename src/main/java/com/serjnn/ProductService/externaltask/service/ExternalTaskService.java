@@ -7,6 +7,7 @@ import com.serjnn.ProductService.externaltask.enums.ExternalTaskState;
 import com.serjnn.ProductService.externaltask.exception.ExternalTaskNotFoundException;
 import com.serjnn.ProductService.externaltask.models.ExternalTask;
 import com.serjnn.ProductService.externaltask.repo.ExternalTaskRepository;
+import com.github.f4b6a3.uuid.UuidCreator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -27,7 +28,7 @@ public class ExternalTaskService {
 
     @Transactional
     public ExternalTaskResponse submitTask(CreateExternalTaskRequest request) {
-        UUID businessKey = UUID.randomUUID();
+        UUID businessKey = UuidCreator.getTimeOrderedEpoch();
         int maxRetries = request.maxRetries() != null ? request.maxRetries() : properties.defaultMaxRetries();
         log.info("Submitting new external task: businessKey={}, type={}", businessKey, request.taskType());
 
