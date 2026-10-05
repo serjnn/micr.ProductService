@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -101,21 +102,38 @@ class DiscountServiceTest {
     }
 
     @Test
-    @DisplayName("Should apply discounts across list of products")
+    @DisplayName("Should apply discounts across list of products using batch lookup")
     void shouldApplyDiscountsToList() {
         Product p1 = new Product(1L, "P1", "D1", new BigDecimal("100.00"), Category.ELECTRONICS);
         Product p2 = new Product(2L, "P2", "D2", new BigDecimal("200.00"), Category.FOOD);
 
-        when(discountCacheManager.getDiscountByProductId(1L))
-                .thenReturn(Optional.of(new CacheableDiscountDto(1L, 10.0)));
-        when(discountCacheManager.getDiscountByProductId(2L))
-                .thenReturn(Optional.of(new CacheableDiscountDto(2L, 20.0)));
+        Map<Long, CacheableDiscountDto> discountMap = Map.of(
+                1L, new CacheableDiscountDto(1L, 10.0),
+                2L, new CacheableDiscountDto(2L, 20.0)
+        );
+
+        when(discountCacheManager.getDiscountsByProductIds(List.of(1L, 2L)))
+                .thenReturn(discountMap);
 
         List<Product> discountedList = discountService.applyDiscounts(List.of(p1, p2));
 
         assertEquals(2, discountedList.size());
         assertEquals(new BigDecimal("90.00"), discountedList.get(0).price());
         assertEquals(new BigDecimal("160.00"), discountedList.get(1).price());
+    }
+
+    @Test
+    @DisplayName("Should return unchanged products when batch retrieval throws exception")
+    void shouldReturnUnchangedProductsWhenBatchRetrievalFails() {
+        Product p1 = new Product(1L, "P1", "D1", new BigDecimal("100.00"), Category.ELECTRONICS);
+
+        when(discountCacheManager.getDiscountsByProductIds(List.of(1L)))
+                .thenThrow(new RuntimeException("Redis connection timed out"));
+
+        List<Product> discountedList = discountService.applyDiscounts(List.of(p1));
+
+        assertEquals(1, discountedList.size());
+        assertEquals(new BigDecimal("100.00"), discountedList.get(0).price());
     }
 
     @Test
