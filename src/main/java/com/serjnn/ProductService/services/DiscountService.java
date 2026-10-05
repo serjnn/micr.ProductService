@@ -45,10 +45,21 @@ public class DiscountService {
     }
 
     public Optional<CacheableDiscountDto> getDiscountByAnyCost(Long id) {
-        return discountCacheManager.getDiscountByProductId(id);
+        try {
+            return discountCacheManager.getDiscountByProductId(id);
+        } catch (Exception e) {
+            log.warn("Failed to retrieve discount for product {}: {}. Proceeding with default (no discount).",
+                    id, e.getMessage());
+            return Optional.of(new CacheableDiscountDto(id, 0.0));
+        }
     }
 
     public void updateCache(CacheableDiscountDto cacheableDiscountDto) {
-        discountCacheManager.addToCache(cacheableDiscountDto);
+        try {
+            discountCacheManager.addToCache(cacheableDiscountDto);
+        } catch (Exception e) {
+            log.warn("Failed to update discount cache for product {}: {}",
+                    cacheableDiscountDto != null ? cacheableDiscountDto.productId() : null, e.getMessage());
+        }
     }
 }

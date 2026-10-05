@@ -56,6 +56,7 @@ public class RedisConfig implements CachingConfigurer {
                 .build();
     }
 
+    @Bean
     @Override
     public CacheErrorHandler errorHandler() {
         return new CacheErrorHandler() {
@@ -67,19 +68,19 @@ public class RedisConfig implements CachingConfigurer {
 
             @Override
             public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
-                log.warn("Redis PUT error for key '{}' in cache '{}': {}",
+                log.warn("Redis PUT error for key '{}' in cache '{}': {}. Proceeding without caching.",
                         key, cache != null ? cache.getName() : "unknown", exception.getMessage());
             }
 
             @Override
             public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
-                log.warn("Redis EVICT error for key '{}' in cache '{}': {}",
+                log.warn("Redis EVICT error for key '{}' in cache '{}': {}. Proceeding without evicting from cache.",
                         key, cache != null ? cache.getName() : "unknown", exception.getMessage());
             }
 
             @Override
             public void handleCacheClearError(RuntimeException exception, Cache cache) {
-                log.warn("Redis CLEAR error in cache '{}': {}",
+                log.warn("Redis CLEAR error in cache '{}': {}. Proceeding without clearing cache.",
                         cache != null ? cache.getName() : "unknown", exception.getMessage());
             }
         };

@@ -117,4 +117,29 @@ class DiscountServiceTest {
         assertEquals(new BigDecimal("90.00"), discountedList.get(0).price());
         assertEquals(new BigDecimal("160.00"), discountedList.get(1).price());
     }
+
+    @Test
+    @DisplayName("Should return unchanged product when cache throws Redis exception")
+    void shouldReturnUnchangedProductWhenCacheThrowsException() {
+        Long productId = 6L;
+        Product product = new Product(productId, "Keyboard", "Mechanical", new BigDecimal("75.00"), Category.ELECTRONICS);
+
+        when(discountCacheManager.getDiscountByProductId(productId))
+                .thenThrow(new RuntimeException("Redis connection refused"));
+
+        Product result = discountService.applyDiscount(product);
+
+        assertNotNull(result);
+        assertEquals(new BigDecimal("75.00"), result.price());
+    }
+
+    @Test
+    @DisplayName("Should gracefully handle exception during updateCache")
+    void shouldGracefullyHandleExceptionDuringUpdateCache() {
+        CacheableDiscountDto dto = new CacheableDiscountDto(7L, 20.0);
+        doThrow(new RuntimeException("Redis cluster down"))
+                .when(discountCacheManager).addToCache(dto);
+
+        assertDoesNotThrow(() -> discountService.updateCache(dto));
+    }
 }

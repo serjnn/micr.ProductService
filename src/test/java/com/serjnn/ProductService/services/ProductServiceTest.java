@@ -137,4 +137,37 @@ class ProductServiceTest {
         assertEquals(1, result.getContent().size());
         assertEquals("iPhone", result.getContent().get(0).name());
     }
+
+    @Test
+    @DisplayName("Should get product by ID with discount applied")
+    void shouldGetByIdWithDiscount() {
+        Long productId = 1L;
+        Product product = new Product(productId, "iPhone", "Apple phone", new BigDecimal("1000.00"), Category.ELECTRONICS);
+        Product discounted = new Product(productId, "iPhone", "Apple phone", new BigDecimal("900.00"), Category.ELECTRONICS);
+
+        when(discountService.getDiscountByAnyCost(productId))
+                .thenReturn(Optional.of(new com.serjnn.ProductService.dtos.CacheableDiscountDto(productId, 10.0)));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(discountService.applyDiscount(product)).thenReturn(discounted);
+
+        Optional<Product> result = productService.getByIdWithDiscount(productId);
+
+        assertTrue(result.isPresent());
+        assertEquals(new BigDecimal("900.00"), result.get().price());
+    }
+
+    @Test
+    @DisplayName("Should get product by ID from repository when no discount found")
+    void shouldGetByIdWithoutDiscountWhenDiscountNotFound() {
+        Long productId = 2L;
+        Product product = new Product(productId, "Book", "Novel", new BigDecimal("20.00"), Category.TOYS);
+
+        when(discountService.getDiscountByAnyCost(productId)).thenReturn(Optional.empty());
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        Optional<Product> result = productService.getByIdWithDiscount(productId);
+
+        assertTrue(result.isPresent());
+        assertEquals(new BigDecimal("20.00"), result.get().price());
+    }
 }
