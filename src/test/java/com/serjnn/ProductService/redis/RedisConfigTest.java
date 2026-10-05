@@ -37,4 +37,19 @@ class RedisConfigTest {
         assertDoesNotThrow(() -> errorHandler.handleCacheEvictError(testException, null, 1L));
         assertDoesNotThrow(() -> errorHandler.handleCacheClearError(testException, null));
     }
+
+    @Test
+    @DisplayName("Should create CacheManager and RedisTemplate beans")
+    void shouldCreateCacheManagerAndRedisTemplate() {
+        org.springframework.data.redis.connection.RedisConnectionFactory factory =
+                mock(org.springframework.data.redis.connection.RedisConnectionFactory.class);
+
+        org.springframework.cache.CacheManager cacheManager = redisConfig.cacheManager(factory);
+        assertNotNull(cacheManager);
+
+        org.springframework.data.redis.core.RedisTemplate<String, Object> template = redisConfig.redisTemplate(factory);
+        assertNotNull(template);
+        assertNotNull(template.getKeySerializer());
+        assertNotNull(template.getValueSerializer());
+    }
 }
