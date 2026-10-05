@@ -37,6 +37,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      timeout: ${REDIS_TIMEOUT:1000ms}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:1000ms}
+      lettuce:
+        shutdown-timeout: ${REDIS_SHUTDOWN_TIMEOUT:200ms}
 
 app:
   services:
