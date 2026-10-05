@@ -19,9 +19,12 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+import org.springframework.data.redis.cache.RedisCacheWriter;
+
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Configuration
 @EnableCaching
@@ -41,14 +44,20 @@ public class RedisConfig implements CachingConfigurer {
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory factory) {
+        RedisCacheWriter.TtlFunction defaultTtlFunction = (key, value) ->
+                Duration.ofMinutes(50 + ThreadLocalRandom.current().nextLong(21)); // 50 to 70 mins
+
+        RedisCacheWriter.TtlFunction discountsTtlFunction = (key, value) ->
+                Duration.ofMinutes(25 + ThreadLocalRandom.current().nextLong(11)); // 25 to 35 mins (30m ± 5m)
+
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(1))
+                .entryTtl(defaultTtlFunction)
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()));
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
-        cacheConfigurations.put("discounts", defaultConfig.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put("discounts", defaultConfig.entryTtl(discountsTtlFunction));
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)
