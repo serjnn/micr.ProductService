@@ -105,9 +105,9 @@ class DiscountCacheManagerTest {
     @Test
     @DisplayName("Should batch retrieve discounts from Redis when all keys exist")
     void shouldBatchRetrieveFromRedisWhenKeysExist() {
-        org.springframework.data.redis.core.RedisTemplate<String, Object> mockRedisTemplate =
+        org.springframework.data.redis.core.RedisTemplate<String, CacheableDiscountDto> mockRedisTemplate =
                 mock(org.springframework.data.redis.core.RedisTemplate.class);
-        org.springframework.data.redis.core.ValueOperations<String, Object> mockValueOps =
+        org.springframework.data.redis.core.ValueOperations<String, CacheableDiscountDto> mockValueOps =
                 mock(org.springframework.data.redis.core.ValueOperations.class);
 
         when(mockRedisTemplate.opsForValue()).thenReturn(mockValueOps);
@@ -122,7 +122,7 @@ class DiscountCacheManagerTest {
         when(builder.build()).thenReturn(restClient);
         AppServicesProperties appServicesProperties = new AppServicesProperties("http://discount/api/v1/discounts/");
 
-        DiscountCacheManager manager = new DiscountCacheManager(builder, appServicesProperties, mockRedisTemplate, null);
+        DiscountCacheManager manager = new DiscountCacheManager(builder, appServicesProperties, mockRedisTemplate);
 
         java.util.Map<Long, CacheableDiscountDto> result = manager.getDiscountsByProductIds(List.of(10L, 20L));
 
@@ -135,9 +135,9 @@ class DiscountCacheManagerTest {
     @Test
     @DisplayName("Should fetch missing discounts from external service during batch retrieval")
     void shouldFetchMissingDiscountsFromExternalServiceInBatch() {
-        org.springframework.data.redis.core.RedisTemplate<String, Object> mockRedisTemplate =
+        org.springframework.data.redis.core.RedisTemplate<String, CacheableDiscountDto> mockRedisTemplate =
                 mock(org.springframework.data.redis.core.RedisTemplate.class);
-        org.springframework.data.redis.core.ValueOperations<String, Object> mockValueOps =
+        org.springframework.data.redis.core.ValueOperations<String, CacheableDiscountDto> mockValueOps =
                 mock(org.springframework.data.redis.core.ValueOperations.class);
 
         when(mockRedisTemplate.opsForValue()).thenReturn(mockValueOps);
@@ -158,7 +158,7 @@ class DiscountCacheManagerTest {
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(CacheableDiscountDto.class)).thenReturn(dto2);
 
-        DiscountCacheManager manager = new DiscountCacheManager(builder, appServicesProperties, mockRedisTemplate, null);
+        DiscountCacheManager manager = new DiscountCacheManager(builder, appServicesProperties, mockRedisTemplate);
 
         java.util.Map<Long, CacheableDiscountDto> result = manager.getDiscountsByProductIds(List.of(10L, 20L));
 

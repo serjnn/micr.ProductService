@@ -51,5 +51,11 @@ class RedisConfigTest {
         assertNotNull(template);
         assertNotNull(template.getKeySerializer());
         assertNotNull(template.getValueSerializer());
+
+        org.springframework.data.redis.core.RedisTemplate<String, com.serjnn.ProductService.dtos.CacheableDiscountDto> discountTemplate =
+                redisConfig.discountRedisTemplate(factory);
+        assertNotNull(discountTemplate);
+        assertNotNull(discountTemplate.getKeySerializer());
+        assertNotNull(discountTemplate.getValueSerializer());
     }
 }

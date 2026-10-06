@@ -1,6 +1,5 @@
 package com.serjnn.ProductService.redis;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serjnn.ProductService.config.AppServicesProperties;
 import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -21,21 +20,18 @@ import java.util.*;
 public class DiscountCacheManager {
     private RestClient restClient;
     private final AppServicesProperties appServicesProperties;
-    private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, CacheableDiscountDto> redisTemplate;
 
     public DiscountCacheManager(RestClient.Builder restClientBuilder,
                                 AppServicesProperties appServicesProperties,
-                                @Autowired(required = false) RedisTemplate<String, Object> redisTemplate,
-                                @Autowired(required = false) ObjectMapper objectMapper) {
+                                @Autowired(required = false) RedisTemplate<String, CacheableDiscountDto> redisTemplate) {
         this.restClient = restClientBuilder.build();
         this.appServicesProperties = appServicesProperties;
         this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
     }
 
     public DiscountCacheManager(RestClient.Builder restClientBuilder, AppServicesProperties appServicesProperties) {
-        this(restClientBuilder, appServicesProperties, null, new ObjectMapper());
+        this(restClientBuilder, appServicesProperties, null);
     }
 
     public void setRestClient(RestClient restClient) {
@@ -96,21 +92,14 @@ public class DiscountCacheManager {
                         .map(id -> "discounts::" + id)
                         .toList();
 
-                List<Object> cachedValues = redisTemplate.opsForValue().multiGet(redisKeys);
+                List<CacheableDiscountDto> cachedValues = redisTemplate.opsForValue().multiGet(redisKeys);
 
                 if (cachedValues != null && cachedValues.size() == uniqueIds.size()) {
                     for (int i = 0; i < uniqueIds.size(); i++) {
                         Long id = uniqueIds.get(i);
-                        Object val = cachedValues.get(i);
-                        if (val instanceof CacheableDiscountDto dto) {
+                        CacheableDiscountDto dto = cachedValues.get(i);
+                        if (dto != null) {
                             result.put(id, dto);
-                        } else if (val != null) {
-                            try {
-                                CacheableDiscountDto dto = objectMapper.convertValue(val, CacheableDiscountDto.class);
-                                result.put(id, dto);
-                            } catch (Exception e) {
-                                missingIds.add(id);
-                            }
                         } else {
                             missingIds.add(id);
                         }

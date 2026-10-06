@@ -14,12 +14,14 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import org.springframework.data.redis.cache.RedisCacheWriter;
+import com.serjnn.ProductService.dtos.CacheableDiscountDto;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -43,6 +45,20 @@ public class RedisConfig implements CachingConfigurer {
     }
 
     @Bean
+    public RedisTemplate<String, CacheableDiscountDto> discountRedisTemplate(RedisConnectionFactory factory) {
+        RedisTemplate<String, CacheableDiscountDto> template = new RedisTemplate<>();
+        template.setConnectionFactory(factory);
+        template.setKeySerializer(new StringRedisSerializer());
+        Jackson2JsonRedisSerializer<CacheableDiscountDto> serializer =
+                new Jackson2JsonRedisSerializer<>(CacheableDiscountDto.class);
+        template.setValueSerializer(serializer);
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(serializer);
+        template.afterPropertiesSet();
+        return template;
+    }
+
+    @Bean
     public CacheManager cacheManager(RedisConnectionFactory factory) {
         RedisCacheWriter.TtlFunction defaultTtlFunction = (key, value) ->
                 Duration.ofMinutes(50 + ThreadLocalRandom.current().nextLong(21)); // 50 to 70 mins
@@ -56,8 +72,13 @@ public class RedisConfig implements CachingConfigurer {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()));
 
+        Jackson2JsonRedisSerializer<CacheableDiscountDto> discountSerializer =
+                new Jackson2JsonRedisSerializer<>(CacheableDiscountDto.class);
+
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
-        cacheConfigurations.put("discounts", defaultConfig.entryTtl(discountsTtlFunction));
+        cacheConfigurations.put("discounts", defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(discountSerializer))
+                .entryTtl(discountsTtlFunction));
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)
